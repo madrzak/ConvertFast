@@ -11,6 +11,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Hide dock icon - set this as early as possible
+        NSApp.setActivationPolicy(.accessory)
+    }
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Create a hidden window to keep the app alive
         let window = NSWindow(
@@ -27,9 +32,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.alphaValue = 0
         window.orderOut(nil)
         hiddenWindow = window
-        
-        // Hide dock icon
-        NSApp.setActivationPolicy(.accessory)
         
         // Create a simple status item with text
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -119,8 +121,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         var missingDeps: [String] = []
         
         for dep in dependencies {
+            print("Checking for dependency: \(dep)")
             if !checkIfCommandExists(dep) {
+                print("❌ \(dep) not found")
                 missingDeps.append(dep)
+            } else {
+                print("✅ \(dep) found")
             }
         }
         
@@ -130,9 +136,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func checkIfCommandExists(_ command: String) -> Bool {
+        print("🔍 Checking for command: \(command)")
+        
+        // Check in /opt/homebrew/bin
+        let homebrewPath = "/opt/homebrew/bin/\(command)"
+        print("  Checking Homebrew path: \(homebrewPath)")
+        
         let process = Process()
-        process.launchPath = "/usr/bin/which"
-        process.arguments = [command]
+        process.launchPath = "/usr/bin/readlink"
+        process.arguments = ["-f", homebrewPath]
         
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -140,8 +152,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try process.run()
             process.waitUntilExit()
-            return process.terminationStatus == 0
+            
+            if process.terminationStatus == 0 {
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                if let resolvedPath = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                    print("  ✅ Command found at: \(resolvedPath)")
+                    return true
+                }
+            }
+            
+            print("  ❌ Command not found: \(command)")
+            return false
         } catch {
+            print("  ❌ Error checking for command \(command): \(error)")
             return false
         }
     }

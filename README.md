@@ -20,7 +20,7 @@ A macOS menu bar app that automatically converts media files using FFmpeg and cw
 ### Via Homebrew (Recommended)
 
 ```bash
-brew tap YOUR_USERNAME/convertfast
+brew tap madrzak/convertfast
 brew install --cask convertfast
 ```
 
