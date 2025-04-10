@@ -4,6 +4,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var folderMonitor: FolderMonitor?
     private var hiddenWindow: NSWindow?
+    private var conversionManager: ConversionManager!
     private var isEnabled = false {
         didSet {
             UserDefaults.standard.set(isEnabled, forKey: "ConvertFastEnabled")
@@ -17,6 +18,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Initialize ConversionManager
+        conversionManager = ConversionManager()
+        
+        // Test command execution
+        conversionManager.testCommands()
+        
         // Create a hidden window to keep the app alive
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),

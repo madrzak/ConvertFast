@@ -9,9 +9,11 @@ struct ConversionTemplate: Codable {
 
 class ConversionManager {
     private var templates: [ConversionTemplate] = []
+    private var commandPaths: [String: String] = [:]
     
     init() {
         loadTemplates()
+        findCommandPaths()
     }
     
     private func loadTemplates() {
@@ -66,43 +68,31 @@ class ConversionManager {
         }
     }
     
-    func processFile(at url: URL) {
-        let fileExtension = url.pathExtension.lowercased()
-        print("  🔄 Processing file: \(url.lastPathComponent) (extension: \(fileExtension))")
+    private func findCommandPaths() {
+        let commands = ["ffmpeg", "cwebp"]
         
-        guard let template = templates.first(where: { $0.inputExtension == fileExtension }) else {
-            print("    ❌ No conversion template found for extension: \(fileExtension)")
-            return
-        }
-        
-        let outputURL = url.deletingPathExtension().appendingPathExtension(template.outputExtension)
-        print("    📝 Will convert to: \(outputURL.lastPathComponent)")
-        
-        // Skip if output file already exists
-        guard !FileManager.default.fileExists(atPath: outputURL.path) else {
-            print("    ⚠️ Output file already exists, skipping: \(outputURL.lastPathComponent)")
-            return
-        }
-        
-        let command = template.command
-            .replacingOccurrences(of: "$input", with: url.path)
-            .replacingOccurrences(of: "$output", with: outputURL.path)
-        
-        print("    🛠️ Executing command: \(command)")
-        
-        executeCommand(command) { success in
-            if success {
-                print("    ✅ Conversion successful: \(outputURL.lastPathComponent)")
-                if template.deleteOriginal {
-                    do {
-                        try FileManager.default.removeItem(at: url)
-                        print("    🗑️ Original file deleted: \(url.lastPathComponent)")
-                    } catch {
-                        print("    ⚠️ Failed to delete original file: \(error.localizedDescription)")
+        for command in commands {
+            let homebrewPath = "/opt/homebrew/bin/\(command)"
+            let process = Process()
+            process.launchPath = "/usr/bin/readlink"
+            process.arguments = ["-f", homebrewPath]
+            
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            
+            do {
+                try process.run()
+                process.waitUntilExit()
+                
+                if process.terminationStatus == 0 {
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    if let resolvedPath = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                        commandPaths[command] = resolvedPath
+                        print("Found path for \(command): \(resolvedPath)")
                     }
                 }
-            } else {
-                print("    ❌ Conversion failed for: \(url.lastPathComponent)")
+            } catch {
+                print("Error finding path for \(command): \(error)")
             }
         }
     }
@@ -135,6 +125,86 @@ class ConversionManager {
         } catch {
             print("    ❌ Error executing command: \(error.localizedDescription)")
             completion(false)
+        }
+    }
+    
+    func testCommands() {
+        print("\n🔍 Testing command execution:")
+        
+        // Test ffmpeg
+        print("\nTesting ffmpeg:")
+        if let ffmpegPath = commandPaths["ffmpeg"] {
+            print("    Using ffmpeg path: \(ffmpegPath)")
+            executeCommand("\"\(ffmpegPath)\" -version") { success in
+                if success {
+                    print("✅ ffmpeg command executed successfully")
+                } else {
+                    print("❌ ffmpeg command execution failed")
+                }
+            }
+        } else {
+            print("❌ ffmpeg path not found")
+        }
+        
+        // Test cwebp
+        print("\nTesting cwebp:")
+        if let cwebpPath = commandPaths["cwebp"] {
+            print("    Using cwebp path: \(cwebpPath)")
+            executeCommand("\"\(cwebpPath)\" -version") { success in
+                if success {
+                    print("✅ cwebp command executed successfully")
+                } else {
+                    print("❌ cwebp command execution failed")
+                }
+            }
+        } else {
+            print("❌ cwebp path not found")
+        }
+    }
+    
+    func processFile(at url: URL) {
+        let fileExtension = url.pathExtension.lowercased()
+        print("  🔄 Processing file: \(url.lastPathComponent) (extension: \(fileExtension))")
+        
+        guard let template = templates.first(where: { $0.inputExtension == fileExtension }) else {
+            print("    ❌ No conversion template found for extension: \(fileExtension)")
+            return
+        }
+        
+        let outputURL = url.deletingPathExtension().appendingPathExtension(template.outputExtension)
+        print("    📝 Will convert to: \(outputURL.lastPathComponent)")
+        
+        // Skip if output file already exists
+        guard !FileManager.default.fileExists(atPath: outputURL.path) else {
+            print("    ⚠️ Output file already exists, skipping: \(outputURL.lastPathComponent)")
+            return
+        }
+        
+        var command = template.command
+            .replacingOccurrences(of: "$input", with: "\"\(url.path)\"")
+            .replacingOccurrences(of: "$output", with: "\"\(outputURL.path)\"")
+        
+        // Replace command names with full paths
+        for (cmd, path) in commandPaths {
+            command = command.replacingOccurrences(of: cmd, with: "\"\(path)\"")
+        }
+        
+        print("    🛠️ Executing command: \(command)")
+        
+        executeCommand(command) { success in
+            if success {
+                print("    ✅ Conversion successful: \(outputURL.lastPathComponent)")
+                if template.deleteOriginal {
+                    do {
+                        try FileManager.default.removeItem(at: url)
+                        print("    🗑️ Original file deleted: \(url.lastPathComponent)")
+                    } catch {
+                        print("    ⚠️ Failed to delete original file: \(error.localizedDescription)")
+                    }
+                }
+            } else {
+                print("    ❌ Conversion failed for: \(url.lastPathComponent)")
+            }
         }
     }
 } 
