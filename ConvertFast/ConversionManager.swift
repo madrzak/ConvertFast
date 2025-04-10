@@ -28,7 +28,7 @@ class ConversionManager {
                 inputExtension: "mp4",
                 outputExtension: "mp4",
                 command: "ffmpeg -i $input -vcodec libx264 -crf 23 -preset fast -movflags +faststart $output",
-                deleteOriginal: true
+                deleteOriginal: false
             ),
             ConversionTemplate(
                 inputExtension: "mov",
@@ -171,7 +171,17 @@ class ConversionManager {
             return
         }
         
-        let outputURL = url.deletingPathExtension().appendingPathExtension(template.outputExtension)
+        // Create output URL with "_optimized" suffix for MP4 files
+        let outputURL: URL
+        if fileExtension == "mp4" && template.outputExtension == "mp4" {
+            let fileName = url.deletingPathExtension().lastPathComponent
+            outputURL = url.deletingLastPathComponent()
+                .appendingPathComponent(fileName + "_optimized")
+                .appendingPathExtension(template.outputExtension)
+        } else {
+            outputURL = url.deletingPathExtension().appendingPathExtension(template.outputExtension)
+        }
+        
         print("    📝 Will convert to: \(outputURL.lastPathComponent)")
         
         // Skip if output file already exists
