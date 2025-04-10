@@ -49,6 +49,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let selectFolderItem = NSMenuItem(title: "Select Watch Folder...", action: #selector(selectWatchFolder), keyEquivalent: "")
         menu.addItem(selectFolderItem)
         
+        let forceConvertItem = NSMenuItem(title: "Force Convert Now", action: #selector(forceConvert), keyEquivalent: "r")
+        menu.addItem(forceConvertItem)
+        
         menu.addItem(NSMenuItem.separator())
         
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -61,9 +64,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Restore previous state
         isEnabled = UserDefaults.standard.bool(forKey: "ConvertFastEnabled")
         
-        // Restore previous watch folder if exists
+        // Restore previous watch folder if exists, otherwise use Desktop
         if let watchFolderPath = UserDefaults.standard.string(forKey: "WatchFolderPath") {
-            setupFolderMonitoring(for: URL(fileURLWithPath: watchFolderPath))
+            let folderURL = URL(fileURLWithPath: watchFolderPath)
+            setupFolderMonitoring(for: folderURL)
+        } else {
+            // Set default folder to Desktop
+            let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
+            setupFolderMonitoring(for: desktopURL)
+            UserDefaults.standard.set(desktopURL.path, forKey: "WatchFolderPath")
         }
     }
     
@@ -78,6 +87,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         let selectFolderItem = NSMenuItem(title: "Select Watch Folder...", action: #selector(selectWatchFolder), keyEquivalent: "")
         menu.addItem(selectFolderItem)
+        
+        let forceConvertItem = NSMenuItem(title: "Force Convert Now", action: #selector(forceConvert), keyEquivalent: "r")
+        menu.addItem(forceConvertItem)
         
         menu.addItem(NSMenuItem.separator())
         
@@ -103,16 +115,59 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         panel.begin { [weak self] response in
             if response == .OK, let url = panel.url {
-                self?.setupFolderMonitoring(for: url)
-                UserDefaults.standard.set(url.path, forKey: "WatchFolderPath")
+                // Request permission for the selected folder
+                PermissionManager.shared.requestFolderAccess(for: url) { granted in
+                    if granted {
+                        self?.setupFolderMonitoring(for: url)
+                        UserDefaults.standard.set(url.path, forKey: "WatchFolderPath")
+                    } else {
+                        let alert = NSAlert()
+                        alert.messageText = "Permission Denied"
+                        alert.informativeText = "ConvertFast needs permission to access the selected folder. Please try again and grant access when prompted."
+                        alert.alertStyle = .warning
+                        alert.runModal()
+                    }
+                }
             }
         }
     }
     
+    @objc private func forceConvert() {
+        if let folderMonitor = folderMonitor {
+            folderMonitor.forceConvert()
+        } else {
+            let alert = NSAlert()
+            alert.messageText = "No Watch Folder Selected"
+            alert.informativeText = "Please select a watch folder first."
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
+    }
+    
     private func setupFolderMonitoring(for url: URL) {
-        folderMonitor = FolderMonitor(url: url)
-        if isEnabled {
-            folderMonitor?.startMonitoring()
+        // Check if we have permission to access the folder
+        if !PermissionManager.shared.hasFolderAccess(for: url) {
+            // Request permission
+            PermissionManager.shared.requestFolderAccess(for: url) { granted in
+                if granted {
+                    self.folderMonitor = FolderMonitor(url: url)
+                    if self.isEnabled {
+                        self.folderMonitor?.startMonitoring()
+                    }
+                } else {
+                    let alert = NSAlert()
+                    alert.messageText = "Permission Denied"
+                    alert.informativeText = "ConvertFast needs permission to access the selected folder. Please try again and grant access when prompted."
+                    alert.alertStyle = .warning
+                    alert.runModal()
+                }
+            }
+        } else {
+            // We already have permission
+            self.folderMonitor = FolderMonitor(url: url)
+            if self.isEnabled {
+                self.folderMonitor?.startMonitoring()
+            }
         }
     }
     

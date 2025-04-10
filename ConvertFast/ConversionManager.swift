@@ -68,15 +68,19 @@ class ConversionManager {
     
     func processFile(at url: URL) {
         let fileExtension = url.pathExtension.lowercased()
+        print("  🔄 Processing file: \(url.lastPathComponent) (extension: \(fileExtension))")
         
         guard let template = templates.first(where: { $0.inputExtension == fileExtension }) else {
+            print("    ❌ No conversion template found for extension: \(fileExtension)")
             return
         }
         
         let outputURL = url.deletingPathExtension().appendingPathExtension(template.outputExtension)
+        print("    📝 Will convert to: \(outputURL.lastPathComponent)")
         
         // Skip if output file already exists
         guard !FileManager.default.fileExists(atPath: outputURL.path) else {
+            print("    ⚠️ Output file already exists, skipping: \(outputURL.lastPathComponent)")
             return
         }
         
@@ -84,9 +88,21 @@ class ConversionManager {
             .replacingOccurrences(of: "$input", with: url.path)
             .replacingOccurrences(of: "$output", with: outputURL.path)
         
+        print("    🛠️ Executing command: \(command)")
+        
         executeCommand(command) { success in
-            if success && template.deleteOriginal {
-                try? FileManager.default.removeItem(at: url)
+            if success {
+                print("    ✅ Conversion successful: \(outputURL.lastPathComponent)")
+                if template.deleteOriginal {
+                    do {
+                        try FileManager.default.removeItem(at: url)
+                        print("    🗑️ Original file deleted: \(url.lastPathComponent)")
+                    } catch {
+                        print("    ⚠️ Failed to delete original file: \(error.localizedDescription)")
+                    }
+                }
+            } else {
+                print("    ❌ Conversion failed for: \(url.lastPathComponent)")
             }
         }
     }
@@ -103,8 +119,21 @@ class ConversionManager {
         do {
             try process.run()
             process.waitUntilExit()
+            
+            // Capture and log command output
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8), !output.isEmpty {
+                print("    📋 Command output:")
+                output.components(separatedBy: .newlines).forEach { line in
+                    if !line.isEmpty {
+                        print("      \(line)")
+                    }
+                }
+            }
+            
             completion(process.terminationStatus == 0)
         } catch {
+            print("    ❌ Error executing command: \(error.localizedDescription)")
             completion(false)
         }
     }
