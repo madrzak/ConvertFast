@@ -61,6 +61,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         menu.addItem(NSMenuItem.separator())
         
+        // Add version info
+        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+            let versionItem = NSMenuItem(title: "ConvertFast v\(version)", action: nil, keyEquivalent: "")
+            versionItem.isEnabled = false
+            menu.addItem(versionItem)
+        }
+        
+        // Add dependency versions
+        let ffmpegVersion = getCommandVersion("ffmpeg")
+        let ffmpegItem = NSMenuItem(title: "FFmpeg: \(ffmpegVersion)", action: nil, keyEquivalent: "")
+        ffmpegItem.isEnabled = false
+        menu.addItem(ffmpegItem)
+        
+        let cwebpVersion = getCommandVersion("cwebp")
+        let cwebpItem = NSMenuItem(title: "cwebp: \(cwebpVersion)", action: nil, keyEquivalent: "")
+        cwebpItem.isEnabled = false
+        menu.addItem(cwebpItem)
+        
+        // Add watched folder info
+        if let watchFolderPath = UserDefaults.standard.string(forKey: "WatchFolderPath") {
+            let folderItem = NSMenuItem(title: "Watching: \(watchFolderPath)", action: nil, keyEquivalent: "")
+            folderItem.isEnabled = false
+            menu.addItem(folderItem)
+        }
+        
+        menu.addItem(NSMenuItem.separator())
+        
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         
         statusItem.menu = menu
@@ -100,9 +127,64 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         menu.addItem(NSMenuItem.separator())
         
+        // Add version info
+        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+            let versionItem = NSMenuItem(title: "ConvertFast v\(version)", action: nil, keyEquivalent: "")
+            versionItem.isEnabled = false
+            menu.addItem(versionItem)
+        }
+        
+        // Add dependency versions
+        let ffmpegVersion = getCommandVersion("ffmpeg")
+        let ffmpegItem = NSMenuItem(title: "FFmpeg: \(ffmpegVersion)", action: nil, keyEquivalent: "")
+        ffmpegItem.isEnabled = false
+        menu.addItem(ffmpegItem)
+        
+        let cwebpVersion = getCommandVersion("cwebp")
+        let cwebpItem = NSMenuItem(title: "cwebp: \(cwebpVersion)", action: nil, keyEquivalent: "")
+        cwebpItem.isEnabled = false
+        menu.addItem(cwebpItem)
+        
+        // Add watched folder info
+        if let watchFolderPath = UserDefaults.standard.string(forKey: "WatchFolderPath") {
+            let folderItem = NSMenuItem(title: "Watching: \(watchFolderPath)", action: nil, keyEquivalent: "")
+            folderItem.isEnabled = false
+            menu.addItem(folderItem)
+        }
+        
+        menu.addItem(NSMenuItem.separator())
+        
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         
         statusItem.menu = menu
+    }
+    
+    private func getCommandVersion(_ command: String) -> String {
+        // Get the command path from ConversionManager
+        let commandPath = conversionManager.getCommandPath(command)
+        
+        let process = Process()
+        process.launchPath = "/bin/bash"
+        process.arguments = ["-c", "\"\(commandPath)\" -version 2>&1 | head -n 1"]
+        
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        
+        do {
+            try process.run()
+            process.waitUntilExit()
+            
+            if process.terminationStatus == 0 {
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                    return output
+                }
+            }
+        } catch {
+            print("Error getting version for \(command): \(error)")
+        }
+        
+        return "Not found"
     }
     
     @objc private func toggleAutoConvert() {

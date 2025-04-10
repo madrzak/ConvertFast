@@ -207,4 +207,8 @@ class ConversionManager {
             }
         }
     }
+    
+    func getCommandPath(_ command: String) -> String {
+        return commandPaths[command] ?? "/opt/homebrew/bin/\(command)"
+    }
 } 

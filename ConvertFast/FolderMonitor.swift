@@ -5,6 +5,9 @@ class FolderMonitor {
     private var directoryFileDescriptor: CInt = -1
     private var source: DispatchSourceFileSystemObject?
     private let conversionManager: ConversionManager
+    private var processedFiles: Set<String> = []
+    private let fileCheckDelay: TimeInterval = 1.0 // 1 second delay to ensure file is fully written
+    private var isAccessingSecurityScopedResource = false
     
     init(url: URL) {
         self.folderURL = url
@@ -18,6 +21,8 @@ class FolderMonitor {
     func startMonitoring() {
         guard source == nil else { return }
         
+        print("🔍 Starting folder monitoring for: \(folderURL.path)")
+        
         // Check if we have permission to access the folder
         if !PermissionManager.shared.hasFolderAccess(for: folderURL) {
             print("❌ No permission to access folder: \(folderURL.path)")
@@ -26,11 +31,15 @@ class FolderMonitor {
         
         // Start accessing the security-scoped resource if we have a bookmark
         if let bookmarkedURL = PermissionManager.shared.getBookmarkedFolderURL() {
-            let shouldStopAccessing = bookmarkedURL.startAccessingSecurityScopedResource()
-            if shouldStopAccessing {
-                // We'll stop accessing when we're done
+            print("🔐 Attempting to access security-scoped resource...")
+            isAccessingSecurityScopedResource = bookmarkedURL.startAccessingSecurityScopedResource()
+            if isAccessingSecurityScopedResource {
                 print("✅ Started accessing security-scoped resource")
+            } else {
+                print("⚠️ Failed to start accessing security-scoped resource")
             }
+        } else {
+            print("⚠️ No bookmarked URL found")
         }
         
         directoryFileDescriptor = open(folderURL.path, O_EVTONLY)
@@ -39,9 +48,12 @@ class FolderMonitor {
             return
         }
         
+        // Use a more comprehensive event mask to catch all relevant file system events
+        let eventMask: DispatchSource.FileSystemEvent = [.write, .extend, .attrib, .delete, .rename]
+        
         source = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: directoryFileDescriptor,
-            eventMask: .write,
+            eventMask: eventMask,
             queue: DispatchQueue.global()
         )
         
@@ -54,38 +66,96 @@ class FolderMonitor {
             close(self.directoryFileDescriptor)
             self.directoryFileDescriptor = -1
             self.source = nil
+            
+            // Stop accessing the security-scoped resource
+            if self.isAccessingSecurityScopedResource,
+               let bookmarkedURL = PermissionManager.shared.getBookmarkedFolderURL() {
+                bookmarkedURL.stopAccessingSecurityScopedResource()
+                self.isAccessingSecurityScopedResource = false
+                print("✅ Stopped accessing security-scoped resource")
+            }
         }
         
         source?.resume()
         print("✅ Started monitoring folder: \(folderURL.path)")
+        
+        // Do an initial scan of the folder
+        handleFolderChanges()
     }
     
     func stopMonitoring() {
         source?.cancel()
+    }
+    
+    private func handleFolderChanges() {
+        print("\n👀 Checking for new files in: \(folderURL.path)")
         
-        // Stop accessing the security-scoped resource
-        if let bookmarkedURL = PermissionManager.shared.getBookmarkedFolderURL() {
-            bookmarkedURL.stopAccessingSecurityScopedResource()
-            print("✅ Stopped accessing security-scoped resource")
+        // List all files in the directory
+        do {
+            let fileURLs = try FileManager.default.contentsOfDirectory(
+                at: folderURL,
+                includingPropertiesForKeys: [.creationDateKey, .isDirectoryKey, .fileSizeKey, .contentModificationDateKey],
+                options: [.skipsHiddenFiles]
+            )
+            
+            print("📂 Found \(fileURLs.count) items in folder")
+            
+            var newFileCount = 0
+            for url in fileURLs {
+                let filePath = url.path
+                print("  📄 Checking file: \(url.lastPathComponent)")
+                
+                guard let isDirectory = try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
+                      !isDirectory else {
+                    print("    ⏩ Skipping directory: \(url.lastPathComponent)")
+                    continue
+                }
+                
+                // Skip if we've already processed this file
+                if processedFiles.contains(filePath) {
+                    print("    ⏩ Already processed: \(url.lastPathComponent)")
+                    continue
+                }
+                
+                // Get file attributes
+                let resourceValues = try url.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey, .fileSizeKey])
+                let creationDate = resourceValues.creationDate
+                let modificationDate = resourceValues.contentModificationDate
+                let fileSize = resourceValues.fileSize ?? 0
+                
+                print("    📊 File info:")
+                print("      - Creation date: \(creationDate?.description ?? "unknown")")
+                print("      - Modification date: \(modificationDate?.description ?? "unknown")")
+                print("      - Size: \(fileSize) bytes")
+                
+                // Process the file if it has content
+                if fileSize > 0 {
+                    print("    ✅ Processing file: \(url.lastPathComponent)")
+                    conversionManager.processFile(at: url)
+                    processedFiles.insert(filePath)
+                    newFileCount += 1
+                } else {
+                    print("    ⚠️ File has no content: \(url.lastPathComponent)")
+                }
+            }
+            
+            if newFileCount > 0 {
+                print("✅ Auto-converted \(newFileCount) new files.")
+            } else {
+                print("ℹ️ No new files to convert.")
+            }
+        } catch {
+            print("❌ Error listing directory contents: \(error.localizedDescription)")
         }
     }
     
     func forceConvert() {
-        print("🔄 Force converting all files in: \(folderURL.path)")
+        print("\n🔄 Force converting all files in: \(folderURL.path)")
         
         // Check if we have permission to access the folder
         if !PermissionManager.shared.hasFolderAccess(for: folderURL) {
             print("❌ No permission to access folder: \(folderURL.path)")
             return
-        }
-        
-        // Start accessing the security-scoped resource if we have a bookmark
-        var shouldStopAccessing = false
-        if let bookmarkedURL = PermissionManager.shared.getBookmarkedFolderURL() {
-            shouldStopAccessing = bookmarkedURL.startAccessingSecurityScopedResource()
-            if shouldStopAccessing {
-                print("✅ Started accessing security-scoped resource")
-            }
         }
         
         // List all files in the directory
@@ -96,74 +166,26 @@ class FolderMonitor {
                 options: [.skipsHiddenFiles]
             )
             
+            print("📂 Found \(fileURLs.count) items in folder")
+            
             var fileCount = 0
             for url in fileURLs {
                 guard let isDirectory = try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
-                      !isDirectory else { continue }
+                      !isDirectory else {
+                    print("  ⏩ Skipping directory: \(url.lastPathComponent)")
+                    continue
+                }
                 
                 // Process all files in the folder
-                print("  📄 Found file: \(url.lastPathComponent)")
+                print("  📄 Processing file: \(url.lastPathComponent)")
                 conversionManager.processFile(at: url)
+                processedFiles.insert(url.path)
                 fileCount += 1
             }
             
             print("✅ Force conversion complete. Processed \(fileCount) files.")
         } catch {
             print("❌ Error listing directory contents: \(error.localizedDescription)")
-        }
-        
-        // Stop accessing the security-scoped resource
-        if shouldStopAccessing, let bookmarkedURL = PermissionManager.shared.getBookmarkedFolderURL() {
-            bookmarkedURL.stopAccessingSecurityScopedResource()
-            print("✅ Stopped accessing security-scoped resource")
-        }
-    }
-    
-    private func handleFolderChanges() {
-        print("👀 Checking for new files in: \(folderURL.path)")
-        
-        // Start accessing the security-scoped resource if we have a bookmark
-        var shouldStopAccessing = false
-        if let bookmarkedURL = PermissionManager.shared.getBookmarkedFolderURL() {
-            shouldStopAccessing = bookmarkedURL.startAccessingSecurityScopedResource()
-            if shouldStopAccessing {
-                print("✅ Started accessing security-scoped resource")
-            }
-        }
-        
-        // List all files in the directory
-        do {
-            let fileURLs = try FileManager.default.contentsOfDirectory(
-                at: folderURL,
-                includingPropertiesForKeys: [.creationDateKey, .isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            )
-            
-            var newFileCount = 0
-            for url in fileURLs {
-                guard let isDirectory = try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
-                      !isDirectory else { continue }
-                
-                // Check if this is a new file (created in the last 5 seconds)
-                if let creationDate = try? url.resourceValues(forKeys: [.creationDateKey]).creationDate,
-                   Date().timeIntervalSince(creationDate) < 5 {
-                    print("  📄 New file detected: \(url.lastPathComponent)")
-                    conversionManager.processFile(at: url)
-                    newFileCount += 1
-                }
-            }
-            
-            if newFileCount > 0 {
-                print("✅ Auto-converted \(newFileCount) new files.")
-            }
-        } catch {
-            print("❌ Error listing directory contents: \(error.localizedDescription)")
-        }
-        
-        // Stop accessing the security-scoped resource
-        if shouldStopAccessing, let bookmarkedURL = PermissionManager.shared.getBookmarkedFolderURL() {
-            bookmarkedURL.stopAccessingSecurityScopedResource()
-            print("✅ Stopped accessing security-scoped resource")
         }
     }
 } 
