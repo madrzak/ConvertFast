@@ -1,0 +1,40 @@
+{
+    "templates": [
+        {
+            "inputExtension": "mp3",
+            "outputExtension": "mp3",
+            "command": "ffmpeg -i $input -ac 1 -ar 22050 -b:a 64k $output",
+            "deleteOriginal": true
+        },
+        {
+            "inputExtension": "mp4",
+            "outputExtension": "mp4",
+            "command": "ffmpeg -i $input -vcodec libx264 -crf 23 -preset fast -movflags +faststart $output",
+            "deleteOriginal": true
+        },
+        {
+            "inputExtension": "mov",
+            "outputExtension": "mp4",
+            "command": "ffmpeg -i $input -vcodec libx264 -crf 23 -preset fast -movflags +faststart $output",
+            "deleteOriginal": true
+        },
+        {
+            "inputExtension": "mp4",
+            "outputExtension": "gif",
+            "command": "ffmpeg -i $input -vf \"fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse\" -loop 0 $output",
+            "deleteOriginal": false
+        },
+        {
+            "inputExtension": "png",
+            "outputExtension": "webp",
+            "command": "cwebp -q 80 $input -o $output",
+            "deleteOriginal": false
+        },
+        {
+            "inputExtension": "jpg",
+            "outputExtension": "webp",
+            "command": "cwebp -q 80 $input -o $output",
+            "deleteOriginal": false
+        }
+    ]
+} 
