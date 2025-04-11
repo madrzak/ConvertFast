@@ -13,6 +13,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     private var progressItem: NSMenuItem?
     private var progressIndicator: NSProgressIndicator?
+    private var statusLabel: NSTextField?
+    
+    private func getRandomIdleMessage() -> String {
+        let idleMessages = [
+            "Watching folder for signs of life...",
+            "Ready to convert your media...",
+            "Idle mode: coffee break",
+            "Monitoring for new files...",
+            "Standing by for conversion duty..."
+        ]
+        return idleMessages.randomElement() ?? "Watching folder for signs of life..."
+    }
     
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Hide dock icon - set this as early as possible
@@ -70,7 +82,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
         
         // Add progress indicator
-        let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 20))
+        let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
         let progressIndicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
         progressIndicator.style = .bar
         progressIndicator.isIndeterminate = false
@@ -81,8 +93,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         progressView.addSubview(progressIndicator)
         self.progressIndicator = progressIndicator
         
-        let progressItem = NSMenuItem()
-        progressItem.view = progressView
+        let progressItem = NSMenuItem(title: getRandomIdleMessage(), action: nil, keyEquivalent: "")
         progressItem.isEnabled = false
         menu.addItem(progressItem)
         self.progressItem = progressItem
@@ -158,37 +169,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self = self else { return }
             
             if progress.isConverting {
-                // Show progress indicator
-                self.progressIndicator?.isHidden = false
+                // Switch to progress view
+                let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
+                let progressIndicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
+                progressIndicator.style = .bar
+                progressIndicator.isIndeterminate = false
+                progressIndicator.minValue = 0
+                progressIndicator.maxValue = 100
+                progressIndicator.doubleValue = 0
+                progressView.addSubview(progressIndicator)
+                self.progressIndicator = progressIndicator
                 
                 // Update progress value
                 if progress.totalFiles > 0 {
                     let percentage = Double(progress.completedFiles) / Double(progress.totalFiles) * 100
-                    self.progressIndicator?.doubleValue = percentage
-                    
-                    // Update menu item title
+                    progressIndicator.doubleValue = percentage
+                    self.progressItem?.view = progressView
                     self.progressItem?.title = "Converting: \(progress.completedFiles)/\(progress.totalFiles) files"
                 } else {
-                    self.progressIndicator?.isIndeterminate = true
-                    self.progressIndicator?.startAnimation(nil)
+                    progressIndicator.isIndeterminate = true
+                    progressIndicator.startAnimation(nil)
+                    self.progressItem?.view = progressView
                     self.progressItem?.title = "Converting: \(progress.currentFileName)"
                 }
             } else {
-                // Hide progress indicator when not converting
-                self.progressIndicator?.isHidden = true
-                
-                // Show a fun idle message
-                let idleMessages = [
-                    "Watching folder for signs of life...",
-                    "Ready to convert your media...",
-                    "Idle mode: coffee break",
-                    "Monitoring for new files...",
-                    "Standing by for conversion duty..."
-                ]
-                
-                // Pick a random message
-                let randomMessage = idleMessages.randomElement() ?? "Watching folder for signs of life..."
-                self.progressItem?.title = randomMessage
+                // Switch back to regular menu item
+                self.progressItem?.view = nil
+                self.progressItem?.title = self.getRandomIdleMessage()
             }
         }
     }
@@ -212,7 +219,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
         
         // Add progress indicator
-        let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 20))
+        let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
         let progressIndicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
         progressIndicator.style = .bar
         progressIndicator.isIndeterminate = false
@@ -223,8 +230,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         progressView.addSubview(progressIndicator)
         self.progressIndicator = progressIndicator
         
-        let progressItem = NSMenuItem()
-        progressItem.view = progressView
+        let progressItem = NSMenuItem(title: getRandomIdleMessage(), action: nil, keyEquivalent: "")
         progressItem.isEnabled = false
         menu.addItem(progressItem)
         self.progressItem = progressItem

@@ -24,6 +24,7 @@ class ConversionManager {
     private var templates: [ConversionTemplate] = []
     private var commandPaths: [String: String] = [:]
     private var conversionProgress = ConversionProgress(totalFiles: 0, completedFiles: 0, currentFileName: "", isConverting: false)
+    private let conversionQueue = DispatchQueue(label: "com.convertfast.conversion", qos: .userInitiated)
     
     init() {
         loadTemplates()
@@ -177,20 +178,31 @@ class ConversionManager {
         
         do {
             try process.run()
-            process.waitUntilExit()
             
-            // Capture and log command output
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let output = String(data: data, encoding: .utf8), !output.isEmpty {
-                print("    📋 Command output:")
-                output.components(separatedBy: .newlines).forEach { line in
-                    if !line.isEmpty {
-                        print("      \(line)")
+            // Read output asynchronously
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if let output = String(data: data, encoding: .utf8), !output.isEmpty {
+                    print("    📋 Command output:")
+                    output.components(separatedBy: .newlines).forEach { line in
+                        if !line.isEmpty {
+                            print("      \(line)")
+                        }
                     }
+                }
+                
+                if data.count == 0 {
+                    handle.readabilityHandler = nil
                 }
             }
             
-            completion(process.terminationStatus == 0)
+            // Wait for completion in background
+            conversionQueue.async {
+                process.waitUntilExit()
+                DispatchQueue.main.async {
+                    completion(process.terminationStatus == 0)
+                }
+            }
         } catch {
             print("    ❌ Error executing command: \(error.localizedDescription)")
             completion(false)
@@ -232,75 +244,89 @@ class ConversionManager {
     }
     
     func processFile(at url: URL) {
-        let fileExtension = url.pathExtension.lowercased()
-        let fileName = url.deletingPathExtension().lastPathComponent
-        
-        // Update progress to show we're starting a new file
-        updateProgress(currentFileName: url.lastPathComponent, isConverting: true)
-        
-        // Skip if the file is already optimized
-        if fileName.hasSuffix("_optimized") {
-            print("  ⏭️ Skipping already optimized file: \(url.lastPathComponent)")
-            updateProgress(completedFiles: conversionProgress.completedFiles + 1, isConverting: false)
-            return
-        }
-        
-        print("  🔄 Processing file: \(url.lastPathComponent) (extension: \(fileExtension))")
-        
-        guard let template = templates.first(where: { $0.inputExtension == fileExtension }) else {
-            print("    ❌ No conversion template found for extension: \(fileExtension)")
-            updateProgress(completedFiles: conversionProgress.completedFiles + 1, isConverting: false)
-            return
-        }
-        
-        // Create output URL with "_optimized" suffix for MP4 files
-        let outputURL: URL
-        if fileExtension == "mp4" && template.outputExtension == "mp4" {
+        conversionQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            let fileExtension = url.pathExtension.lowercased()
             let fileName = url.deletingPathExtension().lastPathComponent
-            outputURL = url.deletingLastPathComponent()
-                .appendingPathComponent(fileName + "_optimized")
-                .appendingPathExtension(template.outputExtension)
-        } else {
-            outputURL = url.deletingPathExtension().appendingPathExtension(template.outputExtension)
-        }
-        
-        print("    📝 Will convert to: \(outputURL.lastPathComponent)")
-        
-        // Skip if output file already exists
-        guard !FileManager.default.fileExists(atPath: outputURL.path) else {
-            print("    ⚠️ Output file already exists, skipping: \(outputURL.lastPathComponent)")
-            updateProgress(completedFiles: conversionProgress.completedFiles + 1, isConverting: false)
-            return
-        }
-        
-        var command = template.command
-            .replacingOccurrences(of: "$input", with: "\"\(url.path)\"")
-            .replacingOccurrences(of: "$output", with: "\"\(outputURL.path)\"")
-        
-        // Replace command names with full paths
-        for (cmd, path) in commandPaths {
-            command = command.replacingOccurrences(of: cmd, with: "\"\(path)\"")
-        }
-        
-        print("    🛠️ Executing command: \(command)")
-        
-        executeCommand(command) { success in
-            if success {
-                print("    ✅ Conversion successful: \(outputURL.lastPathComponent)")
-                if template.deleteOriginal {
-                    do {
-                        try FileManager.default.removeItem(at: url)
-                        print("    🗑️ Original file deleted: \(url.lastPathComponent)")
-                    } catch {
-                        print("    ⚠️ Failed to delete original file: \(error.localizedDescription)")
-                    }
-                }
-            } else {
-                print("    ❌ Conversion failed for: \(url.lastPathComponent)")
+            
+            // Update progress to show we're starting a new file
+            DispatchQueue.main.async {
+                self.updateProgress(currentFileName: url.lastPathComponent, isConverting: true)
             }
             
-            // Update progress when file is completed
-            self.updateProgress(completedFiles: self.conversionProgress.completedFiles + 1, isConverting: false)
+            // Skip if the file is already optimized
+            if fileName.hasSuffix("_optimized") {
+                print("  ⏭️ Skipping already optimized file: \(url.lastPathComponent)")
+                DispatchQueue.main.async {
+                    self.updateProgress(completedFiles: self.conversionProgress.completedFiles + 1, isConverting: false)
+                }
+                return
+            }
+            
+            print("  🔄 Processing file: \(url.lastPathComponent) (extension: \(fileExtension))")
+            
+            guard let template = self.templates.first(where: { $0.inputExtension == fileExtension }) else {
+                print("    ❌ No conversion template found for extension: \(fileExtension)")
+                DispatchQueue.main.async {
+                    self.updateProgress(completedFiles: self.conversionProgress.completedFiles + 1, isConverting: false)
+                }
+                return
+            }
+            
+            // Create output URL with "_optimized" suffix for MP4 files
+            let outputURL: URL
+            if fileExtension == "mp4" && template.outputExtension == "mp4" {
+                let fileName = url.deletingPathExtension().lastPathComponent
+                outputURL = url.deletingLastPathComponent()
+                    .appendingPathComponent(fileName + "_optimized")
+                    .appendingPathExtension(template.outputExtension)
+            } else {
+                outputURL = url.deletingPathExtension().appendingPathExtension(template.outputExtension)
+            }
+            
+            print("    📝 Will convert to: \(outputURL.lastPathComponent)")
+            
+            // Skip if output file already exists
+            guard !FileManager.default.fileExists(atPath: outputURL.path) else {
+                print("    ⚠️ Output file already exists, skipping: \(outputURL.lastPathComponent)")
+                DispatchQueue.main.async {
+                    self.updateProgress(completedFiles: self.conversionProgress.completedFiles + 1, isConverting: false)
+                }
+                return
+            }
+            
+            var command = template.command
+                .replacingOccurrences(of: "$input", with: "\"\(url.path)\"")
+                .replacingOccurrences(of: "$output", with: "\"\(outputURL.path)\"")
+            
+            // Replace command names with full paths
+            for (cmd, path) in self.commandPaths {
+                command = command.replacingOccurrences(of: cmd, with: "\"\(path)\"")
+            }
+            
+            print("    🛠️ Executing command: \(command)")
+            
+            self.executeCommand(command) { success in
+                if success {
+                    print("    ✅ Conversion successful: \(outputURL.lastPathComponent)")
+                    if template.deleteOriginal {
+                        do {
+                            try FileManager.default.removeItem(at: url)
+                            print("    🗑️ Original file deleted: \(url.lastPathComponent)")
+                        } catch {
+                            print("    ⚠️ Failed to delete original file: \(error.localizedDescription)")
+                        }
+                    }
+                } else {
+                    print("    ❌ Conversion failed for: \(url.lastPathComponent)")
+                }
+                
+                // Update progress when file is completed
+                DispatchQueue.main.async {
+                    self.updateProgress(completedFiles: self.conversionProgress.completedFiles + 1, isConverting: false)
+                }
+            }
         }
     }
     
@@ -310,7 +336,9 @@ class ConversionManager {
     
     // Add a method to start a batch conversion
     func startBatchConversion(files: [URL]) {
-        updateProgress(totalFiles: files.count, completedFiles: 0, currentFileName: "", isConverting: true)
+        DispatchQueue.main.async {
+            self.updateProgress(totalFiles: files.count, completedFiles: 0, currentFileName: "", isConverting: true)
+        }
         
         // Process each file in the batch
         for (index, url) in files.enumerated() {
