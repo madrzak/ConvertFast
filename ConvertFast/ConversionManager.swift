@@ -1,5 +1,10 @@
 import Foundation
 
+// Add a notification for progress updates
+extension Notification.Name {
+    static let conversionProgressUpdated = Notification.Name("conversionProgressUpdated")
+}
+
 struct ConversionTemplate: Codable {
     let inputExtension: String
     let outputExtension: String
@@ -7,13 +12,77 @@ struct ConversionTemplate: Codable {
     let deleteOriginal: Bool
 }
 
+// Add a struct to track conversion progress
+struct ConversionProgress {
+    let totalFiles: Int
+    let completedFiles: Int
+    let currentFileName: String
+    let isConverting: Bool
+}
+
 class ConversionManager {
     private var templates: [ConversionTemplate] = []
     private var commandPaths: [String: String] = [:]
+    private var conversionProgress = ConversionProgress(totalFiles: 0, completedFiles: 0, currentFileName: "", isConverting: false)
     
     init() {
         loadTemplates()
         findCommandPaths()
+    }
+    
+    // Add a method to get the current progress
+    func getProgress() -> ConversionProgress {
+        return conversionProgress
+    }
+    
+    // Add a method to update progress
+    private func updateProgress(totalFiles: Int? = nil, completedFiles: Int? = nil, currentFileName: String? = nil, isConverting: Bool? = nil) {
+        var newProgress = conversionProgress
+        
+        if let totalFiles = totalFiles {
+            newProgress = ConversionProgress(
+                totalFiles: totalFiles,
+                completedFiles: conversionProgress.completedFiles,
+                currentFileName: conversionProgress.currentFileName,
+                isConverting: conversionProgress.isConverting
+            )
+        }
+        
+        if let completedFiles = completedFiles {
+            newProgress = ConversionProgress(
+                totalFiles: newProgress.totalFiles,
+                completedFiles: completedFiles,
+                currentFileName: newProgress.currentFileName,
+                isConverting: newProgress.isConverting
+            )
+        }
+        
+        if let currentFileName = currentFileName {
+            newProgress = ConversionProgress(
+                totalFiles: newProgress.totalFiles,
+                completedFiles: newProgress.completedFiles,
+                currentFileName: currentFileName,
+                isConverting: newProgress.isConverting
+            )
+        }
+        
+        if let isConverting = isConverting {
+            newProgress = ConversionProgress(
+                totalFiles: newProgress.totalFiles,
+                completedFiles: newProgress.completedFiles,
+                currentFileName: newProgress.currentFileName,
+                isConverting: isConverting
+            )
+        }
+        
+        conversionProgress = newProgress
+        
+        // Post notification with updated progress
+        NotificationCenter.default.post(
+            name: .conversionProgressUpdated,
+            object: nil,
+            userInfo: ["progress": newProgress]
+        )
     }
     
     private func loadTemplates() {
@@ -166,9 +235,13 @@ class ConversionManager {
         let fileExtension = url.pathExtension.lowercased()
         let fileName = url.deletingPathExtension().lastPathComponent
         
+        // Update progress to show we're starting a new file
+        updateProgress(currentFileName: url.lastPathComponent, isConverting: true)
+        
         // Skip if the file is already optimized
         if fileName.hasSuffix("_optimized") {
             print("  ⏭️ Skipping already optimized file: \(url.lastPathComponent)")
+            updateProgress(completedFiles: conversionProgress.completedFiles + 1, isConverting: false)
             return
         }
         
@@ -176,6 +249,7 @@ class ConversionManager {
         
         guard let template = templates.first(where: { $0.inputExtension == fileExtension }) else {
             print("    ❌ No conversion template found for extension: \(fileExtension)")
+            updateProgress(completedFiles: conversionProgress.completedFiles + 1, isConverting: false)
             return
         }
         
@@ -195,6 +269,7 @@ class ConversionManager {
         // Skip if output file already exists
         guard !FileManager.default.fileExists(atPath: outputURL.path) else {
             print("    ⚠️ Output file already exists, skipping: \(outputURL.lastPathComponent)")
+            updateProgress(completedFiles: conversionProgress.completedFiles + 1, isConverting: false)
             return
         }
         
@@ -223,10 +298,23 @@ class ConversionManager {
             } else {
                 print("    ❌ Conversion failed for: \(url.lastPathComponent)")
             }
+            
+            // Update progress when file is completed
+            self.updateProgress(completedFiles: self.conversionProgress.completedFiles + 1, isConverting: false)
         }
     }
     
     func getCommandPath(_ command: String) -> String {
         return commandPaths[command] ?? "/opt/homebrew/bin/\(command)"
+    }
+    
+    // Add a method to start a batch conversion
+    func startBatchConversion(files: [URL]) {
+        updateProgress(totalFiles: files.count, completedFiles: 0, currentFileName: "", isConverting: true)
+        
+        // Process each file in the batch
+        for (index, url) in files.enumerated() {
+            processFile(at: url)
+        }
     }
 } 

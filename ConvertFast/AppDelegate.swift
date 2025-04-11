@@ -11,6 +11,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             updateMenuBar()
         }
     }
+    private var progressItem: NSMenuItem?
+    private var progressIndicator: NSProgressIndicator?
     
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Hide dock icon - set this as early as possible
@@ -67,6 +69,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         menu.addItem(NSMenuItem.separator())
         
+        // Add progress indicator
+        let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 20))
+        let progressIndicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
+        progressIndicator.style = .bar
+        progressIndicator.isIndeterminate = false
+        progressIndicator.minValue = 0
+        progressIndicator.maxValue = 100
+        progressIndicator.doubleValue = 0
+        progressIndicator.isHidden = true
+        progressView.addSubview(progressIndicator)
+        self.progressIndicator = progressIndicator
+        
+        let progressItem = NSMenuItem()
+        progressItem.view = progressView
+        progressItem.isEnabled = false
+        menu.addItem(progressItem)
+        self.progressItem = progressItem
+        
+        menu.addItem(NSMenuItem.separator())
+        
         // Add version info
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
             let versionItem = NSMenuItem(title: "ConvertFast v\(version)", action: nil, keyEquivalent: "")
@@ -119,6 +141,56 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: .folderAccessGranted,
             object: nil
         )
+        
+        // Observe conversion progress updates
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleConversionProgressUpdated(_:)),
+            name: .conversionProgressUpdated,
+            object: nil
+        )
+    }
+    
+    @objc private func handleConversionProgressUpdated(_ notification: Notification) {
+        guard let progress = notification.userInfo?["progress"] as? ConversionProgress else { return }
+        
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            if progress.isConverting {
+                // Show progress indicator
+                self.progressIndicator?.isHidden = false
+                
+                // Update progress value
+                if progress.totalFiles > 0 {
+                    let percentage = Double(progress.completedFiles) / Double(progress.totalFiles) * 100
+                    self.progressIndicator?.doubleValue = percentage
+                    
+                    // Update menu item title
+                    self.progressItem?.title = "Converting: \(progress.completedFiles)/\(progress.totalFiles) files"
+                } else {
+                    self.progressIndicator?.isIndeterminate = true
+                    self.progressIndicator?.startAnimation(nil)
+                    self.progressItem?.title = "Converting: \(progress.currentFileName)"
+                }
+            } else {
+                // Hide progress indicator when not converting
+                self.progressIndicator?.isHidden = true
+                
+                // Show a fun idle message
+                let idleMessages = [
+                    "Watching folder for signs of life...",
+                    "Ready to convert your media...",
+                    "Idle mode: coffee break",
+                    "Monitoring for new files...",
+                    "Standing by for conversion duty..."
+                ]
+                
+                // Pick a random message
+                let randomMessage = idleMessages.randomElement() ?? "Watching folder for signs of life..."
+                self.progressItem?.title = randomMessage
+            }
+        }
     }
     
     private func updateMenuBar() {
@@ -136,6 +208,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         let forceConvertItem = NSMenuItem(title: "ConvertFast Now", action: #selector(forceConvert), keyEquivalent: "r")
         menu.addItem(forceConvertItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        // Add progress indicator
+        let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 20))
+        let progressIndicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
+        progressIndicator.style = .bar
+        progressIndicator.isIndeterminate = false
+        progressIndicator.minValue = 0
+        progressIndicator.maxValue = 100
+        progressIndicator.doubleValue = 0
+        progressIndicator.isHidden = true
+        progressView.addSubview(progressIndicator)
+        self.progressIndicator = progressIndicator
+        
+        let progressItem = NSMenuItem()
+        progressItem.view = progressView
+        progressItem.isEnabled = false
+        menu.addItem(progressItem)
+        self.progressItem = progressItem
         
         menu.addItem(NSMenuItem.separator())
         

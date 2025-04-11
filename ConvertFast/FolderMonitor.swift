@@ -93,7 +93,7 @@ class FolderMonitor {
             
             print("📂 Found \(fileURLs.count) items in folder")
             
-            var newFileCount = 0
+            var newFiles: [URL] = []
             for url in fileURLs {
                 let filePath = url.path
                 print("  📄 Checking file: \(url.lastPathComponent)")
@@ -124,16 +124,16 @@ class FolderMonitor {
                 // Process the file if it has content
                 if fileSize > 0 {
                     print("    ✅ Processing file: \(url.lastPathComponent)")
-                    conversionManager.processFile(at: url)
+                    newFiles.append(url)
                     processedFiles.insert(filePath)
-                    newFileCount += 1
                 } else {
                     print("    ⚠️ File has no content: \(url.lastPathComponent)")
                 }
             }
             
-            if newFileCount > 0 {
-                print("✅ Auto-converted \(newFileCount) new files.")
+            if newFiles.count > 0 {
+                print("✅ Auto-converting \(newFiles.count) new files.")
+                conversionManager.startBatchConversion(files: newFiles)
             } else {
                 print("ℹ️ No new files to convert.")
             }
@@ -161,7 +161,7 @@ class FolderMonitor {
             
             print("📂 Found \(fileURLs.count) items in folder")
             
-            var fileCount = 0
+            var filesToConvert: [URL] = []
             for url in fileURLs {
                 guard let isDirectory = try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
                       !isDirectory else {
@@ -171,12 +171,12 @@ class FolderMonitor {
                 
                 // Process all files in the folder
                 print("  📄 Processing file: \(url.lastPathComponent)")
-                conversionManager.processFile(at: url)
+                filesToConvert.append(url)
                 processedFiles.insert(url.path)
-                fileCount += 1
             }
             
-            print("✅ Force conversion complete. Processed \(fileCount) files.")
+            print("✅ Force conversion complete. Processing \(filesToConvert.count) files.")
+            conversionManager.startBatchConversion(files: filesToConvert)
         } catch {
             print("❌ Error listing directory contents: \(error.localizedDescription)")
         }
