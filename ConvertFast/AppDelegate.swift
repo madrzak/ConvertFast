@@ -42,7 +42,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Create a simple status item with text
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "⚡"
+//        if let icon = NSImage(named: "MenuIconV1") {
+        if let icon = NSImage(named: "MenuIconV2") {
+            icon.isTemplate = true // Enables dark/light mode adaptation
+            statusItem.button?.image = icon
+        } else {
+            statusItem.button?.title = "⚡"
+        }
         
         // Create menu
         let menu = NSMenu()
