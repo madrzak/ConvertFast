@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 
 // Add a notification for progress updates
 extension Notification.Name {
@@ -25,10 +26,57 @@ class ConversionManager {
     private var commandPaths: [String: String] = [:]
     private var conversionProgress = ConversionProgress(totalFiles: 0, completedFiles: 0, currentFileName: "", isConverting: false)
     private let conversionQueue = DispatchQueue(label: "com.convertfast.conversion", qos: .userInitiated)
+    private var audioPlayer: AVAudioPlayer?
     
     init() {
         loadTemplates()
         findCommandPaths()
+        setupAudioPlayer()
+    }
+    
+    private func setupAudioPlayer() {
+        print("🔊 Setting up audio player...")
+        
+        // Try to find the sound file
+        if let soundURL = Bundle.main.url(forResource: "ding", withExtension: "mp3", subdirectory: "Resources") {
+            print("✅ Found sound file at: \(soundURL.path)")
+            do {
+                audioPlayer = try AVAudioPlayer(contentsOf: soundURL)
+                audioPlayer?.prepareToPlay()
+                print("✅ Audio player initialized successfully")
+            } catch {
+                print("❌ Error initializing audio player: \(error)")
+            }
+        } else {
+            print("❌ Could not find ding.mp3 in Resources directory")
+            // Try alternative locations
+            if let soundURL = Bundle.main.url(forResource: "ding", withExtension: "mp3") {
+                print("✅ Found sound file at alternative location: \(soundURL.path)")
+                do {
+                    audioPlayer = try AVAudioPlayer(contentsOf: soundURL)
+                    audioPlayer?.prepareToPlay()
+                    print("✅ Audio player initialized successfully")
+                } catch {
+                    print("❌ Error initializing audio player: \(error)")
+                }
+            } else {
+                print("❌ Could not find ding.mp3 in any location")
+            }
+        }
+    }
+    
+    private func playCompletionSound() {
+        print("🔊 Attempting to play completion sound...")
+        if let player = audioPlayer {
+            player.currentTime = 0
+            if player.play() {
+                print("✅ Sound played successfully")
+            } else {
+                print("❌ Failed to play sound")
+            }
+        } else {
+            print("❌ Audio player is nil")
+        }
     }
     
     // Add a method to get the current progress
@@ -56,6 +104,11 @@ class ConversionManager {
                 currentFileName: newProgress.currentFileName,
                 isConverting: newProgress.isConverting
             )
+            
+            // Play sound when all files are completed
+            if completedFiles == newProgress.totalFiles && newProgress.totalFiles > 0 {
+                playCompletionSound()
+            }
         }
         
         if let currentFileName = currentFileName {
