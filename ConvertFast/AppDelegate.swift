@@ -113,7 +113,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func updateMenuBar() {
         let menu = NSMenu()
         
-        let toggleItem = NSMenuItem(title: "Enable Auto-Convert", action: #selector(toggleAutoConvert), keyEquivalent: "")
+        let toggleItem = NSMenuItem(title: "Enable Auto ConvertFast", action: #selector(toggleAutoConvert), keyEquivalent: "")
         toggleItem.state = isEnabled ? .on : .off
         menu.addItem(toggleItem)
         
@@ -122,14 +122,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let selectFolderItem = NSMenuItem(title: "Select Watch Folder...", action: #selector(selectWatchFolder), keyEquivalent: "")
         menu.addItem(selectFolderItem)
         
-        let forceConvertItem = NSMenuItem(title: "Force Convert Now", action: #selector(forceConvert), keyEquivalent: "r")
+        let forceConvertItem = NSMenuItem(title: "ConvertFast Now", action: #selector(forceConvert), keyEquivalent: "r")
         menu.addItem(forceConvertItem)
         
         menu.addItem(NSMenuItem.separator())
         
         // Add version info
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-            let versionItem = NSMenuItem(title: "ConvertFast v\(version)", action: nil, keyEquivalent: "")
+            let versionItem = NSMenuItem(title: "ConvertFast \(version)", action: nil, keyEquivalent: "")
             versionItem.isEnabled = false
             menu.addItem(versionItem)
         }
