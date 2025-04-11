@@ -7,10 +7,15 @@ class PermissionManager {
     private init() {}
     
     func requestFolderAccess(for url: URL, completion: @escaping (Bool) -> Void) {
-        // Check if we already have access
-        if hasFolderAccess(for: url) {
-            completion(true)
-            return
+        // First check if we have a valid bookmark
+        if let bookmarkedURL = getBookmarkedFolderURL(), bookmarkedURL.path == url.path {
+            // We have a valid bookmark for this URL
+            let canAccess = bookmarkedURL.startAccessingSecurityScopedResource()
+            if canAccess {
+                bookmarkedURL.stopAccessingSecurityScopedResource()
+                completion(true)
+                return
+            }
         }
         
         // Request access using NSOpenPanel
@@ -30,7 +35,7 @@ class PermissionManager {
                 // Save the bookmark for future use
                 do {
                     let bookmarkData = try selectedURL.bookmarkData(
-                        options: .withSecurityScope,
+                        options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
                         includingResourceValuesForKeys: nil,
                         relativeTo: nil
                     )
@@ -53,9 +58,17 @@ class PermissionManager {
     }
     
     func hasFolderAccess(for url: URL) -> Bool {
-        // Try to access the folder to check permissions
-        let fileManager = FileManager.default
-        return fileManager.isReadableFile(atPath: url.path)
+        // First check if we have a valid bookmark for this URL
+        if let bookmarkedURL = getBookmarkedFolderURL(), bookmarkedURL.path == url.path {
+            let canAccess = bookmarkedURL.startAccessingSecurityScopedResource()
+            if canAccess {
+                bookmarkedURL.stopAccessingSecurityScopedResource()
+                return true
+            }
+        }
+        
+        // If no bookmark or can't access, try direct access
+        return FileManager.default.isReadableFile(atPath: url.path)
     }
     
     func getBookmarkedFolderURL() -> URL? {
@@ -75,7 +88,7 @@ class PermissionManager {
             // If the bookmark is stale, update it
             if isStale {
                 let newBookmarkData = try url.bookmarkData(
-                    options: .withSecurityScope,
+                    options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
                     includingResourceValuesForKeys: nil,
                     relativeTo: nil
                 )
@@ -85,6 +98,8 @@ class PermissionManager {
             return url
         } catch {
             print("❌ Failed to resolve bookmark: \(error.localizedDescription)")
+            // Clean up invalid bookmark
+            UserDefaults.standard.removeObject(forKey: "FolderBookmark")
             return nil
         }
     }

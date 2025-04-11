@@ -70,12 +70,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Add dependency versions
         let ffmpegVersion = getCommandVersion("ffmpeg")
-        let ffmpegItem = NSMenuItem(title: "FFmpeg: \(ffmpegVersion)", action: nil, keyEquivalent: "")
+        let ffmpegStatus = checkIfCommandExists("ffmpeg") ? "(ok)" : "❌"
+        let ffmpegItem = NSMenuItem(title: "FFmpeg \(ffmpegStatus): \(ffmpegVersion)", action: nil, keyEquivalent: "")
         ffmpegItem.isEnabled = false
         menu.addItem(ffmpegItem)
         
         let cwebpVersion = getCommandVersion("cwebp")
-        let cwebpItem = NSMenuItem(title: "cwebp: \(cwebpVersion)", action: nil, keyEquivalent: "")
+        let cwebpStatus = checkIfCommandExists("cwebp") ? "(ok)" : "❌"
+        let cwebpItem = NSMenuItem(title: "cwebp \(cwebpStatus): \(cwebpVersion)", action: nil, keyEquivalent: "")
         cwebpItem.isEnabled = false
         menu.addItem(cwebpItem)
         
@@ -102,11 +104,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let watchFolderPath = UserDefaults.standard.string(forKey: "WatchFolderPath") {
             let folderURL = URL(fileURLWithPath: watchFolderPath)
             setupFolderMonitoring(for: folderURL)
-        } else {
-            // Set default folder to Desktop
-            let desktopURL = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
-            setupFolderMonitoring(for: desktopURL)
-            UserDefaults.standard.set(desktopURL.path, forKey: "WatchFolderPath")
         }
     }
     
@@ -136,12 +133,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Add dependency versions
         let ffmpegVersion = getCommandVersion("ffmpeg")
-        let ffmpegItem = NSMenuItem(title: "FFmpeg: \(ffmpegVersion)", action: nil, keyEquivalent: "")
+        let ffmpegStatus = checkIfCommandExists("ffmpeg") ? "(ok)" : "❌"
+        let ffmpegItem = NSMenuItem(title: "FFmpeg \(ffmpegStatus): \(ffmpegVersion)", action: nil, keyEquivalent: "")
         ffmpegItem.isEnabled = false
         menu.addItem(ffmpegItem)
         
         let cwebpVersion = getCommandVersion("cwebp")
-        let cwebpItem = NSMenuItem(title: "cwebp: \(cwebpVersion)", action: nil, keyEquivalent: "")
+        let cwebpStatus = checkIfCommandExists("cwebp") ? "(ok)" : "❌"
+        let cwebpItem = NSMenuItem(title: "cwebp \(cwebpStatus): \(cwebpVersion)", action: nil, keyEquivalent: "")
         cwebpItem.isEnabled = false
         menu.addItem(cwebpItem)
         
@@ -165,7 +164,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         let process = Process()
         process.launchPath = "/bin/bash"
-        process.arguments = ["-c", "\"\(commandPath)\" -version 2>&1 | head -n 1"]
+        
+        // Different version command based on the tool
+        let versionCommand = command == "ffmpeg" ? 
+            "\"\(commandPath)\" -version | head -n 1 | awk '{print $3}'" :
+            "\"\(commandPath)\" -version 2>&1 | head -n 1"
+            
+        process.arguments = ["-c", versionCommand]
         
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -234,28 +239,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func setupFolderMonitoring(for url: URL) {
-        // Check if we have permission to access the folder
-        if !PermissionManager.shared.hasFolderAccess(for: url) {
-            // Request permission
-            PermissionManager.shared.requestFolderAccess(for: url) { granted in
-                if granted {
-                    self.folderMonitor = FolderMonitor(url: url)
-                    if self.isEnabled {
-                        self.folderMonitor?.startMonitoring()
-                    }
-                } else {
-                    let alert = NSAlert()
-                    alert.messageText = "Permission Denied"
-                    alert.informativeText = "ConvertFast needs permission to access the selected folder. Please try again and grant access when prompted."
-                    alert.alertStyle = .warning
-                    alert.runModal()
+        // For previously saved paths, only check if we can actually access the folder
+        if UserDefaults.standard.string(forKey: "WatchFolderPath") == url.path {
+            do {
+                // Try to read the directory contents as a basic access test
+                _ = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+                // If we can read the directory, we have permission
+                self.folderMonitor = FolderMonitor(url: url)
+                if self.isEnabled {
+                    self.folderMonitor?.startMonitoring()
                 }
+            } catch {
+                // If we can't access the folder anymore, request permission again
+                requestFolderPermission(for: url)
             }
         } else {
-            // We already have permission
-            self.folderMonitor = FolderMonitor(url: url)
-            if self.isEnabled {
-                self.folderMonitor?.startMonitoring()
+            // For new folders, always request permission
+            requestFolderPermission(for: url)
+        }
+    }
+    
+    private func requestFolderPermission(for url: URL) {
+        PermissionManager.shared.requestFolderAccess(for: url) { [weak self] granted in
+            guard let self = self else { return }
+            
+            if granted {
+                self.folderMonitor = FolderMonitor(url: url)
+                if self.isEnabled {
+                    self.folderMonitor?.startMonitoring()
+                }
+            } else {
+                let alert = NSAlert()
+                alert.messageText = "Permission Denied"
+                alert.informativeText = "ConvertFast needs permission to access the selected folder. Please try again and grant access when prompted."
+                alert.alertStyle = .warning
+                alert.runModal()
             }
         }
     }
