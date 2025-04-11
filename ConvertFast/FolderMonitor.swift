@@ -24,22 +24,17 @@ class FolderMonitor {
         print("🔍 Starting folder monitoring for: \(folderURL.path)")
         
         // Check if we have permission to access the folder
-        if !PermissionManager.shared.hasFolderAccess(for: folderURL) {
+        guard let accessibleURL = PermissionManager.shared.getFolderAccess(for: folderURL) else {
             print("❌ No permission to access folder: \(folderURL.path)")
             return
         }
         
-        // Start accessing the security-scoped resource if we have a bookmark
-        if let bookmarkedURL = PermissionManager.shared.getBookmarkedFolderURL() {
-            print("🔐 Attempting to access security-scoped resource...")
-            isAccessingSecurityScopedResource = bookmarkedURL.startAccessingSecurityScopedResource()
-            if isAccessingSecurityScopedResource {
-                print("✅ Started accessing security-scoped resource")
-            } else {
-                print("⚠️ Failed to start accessing security-scoped resource")
-            }
+        // Start accessing the security-scoped resource
+        isAccessingSecurityScopedResource = accessibleURL.startAccessingSecurityScopedResource()
+        if isAccessingSecurityScopedResource {
+            print("✅ Started accessing security-scoped resource")
         } else {
-            print("⚠️ No bookmarked URL found")
+            print("⚠️ Failed to start accessing security-scoped resource")
         }
         
         directoryFileDescriptor = open(folderURL.path, O_EVTONLY)
@@ -68,9 +63,7 @@ class FolderMonitor {
             self.source = nil
             
             // Stop accessing the security-scoped resource
-            if self.isAccessingSecurityScopedResource,
-               let bookmarkedURL = PermissionManager.shared.getBookmarkedFolderURL() {
-                bookmarkedURL.stopAccessingSecurityScopedResource()
+            if self.isAccessingSecurityScopedResource {
                 self.isAccessingSecurityScopedResource = false
                 print("✅ Stopped accessing security-scoped resource")
             }
@@ -153,7 +146,7 @@ class FolderMonitor {
         print("\n🔄 Force converting all files in: \(folderURL.path)")
         
         // Check if we have permission to access the folder
-        if !PermissionManager.shared.hasFolderAccess(for: folderURL) {
+        guard let _ = PermissionManager.shared.getFolderAccess(for: folderURL) else {
             print("❌ No permission to access folder: \(folderURL.path)")
             return
         }

@@ -164,6 +164,14 @@ class ConversionManager {
     
     func processFile(at url: URL) {
         let fileExtension = url.pathExtension.lowercased()
+        let fileName = url.deletingPathExtension().lastPathComponent
+        
+        // Skip if the file is already optimized
+        if fileName.hasSuffix("_optimized") {
+            print("  ⏭️ Skipping already optimized file: \(url.lastPathComponent)")
+            return
+        }
+        
         print("  🔄 Processing file: \(url.lastPathComponent) (extension: \(fileExtension))")
         
         guard let template = templates.first(where: { $0.inputExtension == fileExtension }) else {
