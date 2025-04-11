@@ -1,6 +1,10 @@
 import Foundation
 import Cocoa
 
+extension Notification.Name {
+    static let folderAccessGranted = Notification.Name("folderAccessGranted")
+}
+
 class PermissionManager {
     static let shared = PermissionManager()
     
@@ -27,6 +31,14 @@ class PermissionManager {
             )
             UserDefaults.standard.set(bookmarkData, forKey: "FolderBookmark")
             print("✅ Folder access granted and bookmark saved")
+            
+            // Post notification with the granted URL
+            NotificationCenter.default.post(
+                name: .folderAccessGranted,
+                object: nil,
+                userInfo: ["url": url]
+            )
+            
             completion(true)
         } catch {
             print("❌ Failed to create bookmark: \(error.localizedDescription)")

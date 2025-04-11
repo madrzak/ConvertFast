@@ -105,10 +105,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let folderURL = URL(fileURLWithPath: watchFolderPath)
             setupFolderMonitoring(for: folderURL)
         }
+        
+        // Observe folder access changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleFolderAccessGranted(_:)),
+            name: .folderAccessGranted,
+            object: nil
+        )
     }
     
     private func updateMenuBar() {
         let menu = NSMenu()
+    
         
         let toggleItem = NSMenuItem(title: "Enable Auto ConvertFast", action: #selector(toggleAutoConvert), keyEquivalent: "")
         toggleItem.state = isEnabled ? .on : .off
@@ -143,12 +152,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let cwebpItem = NSMenuItem(title: "cwebp \(cwebpStatus): \(cwebpVersion)", action: nil, keyEquivalent: "")
         cwebpItem.isEnabled = false
         menu.addItem(cwebpItem)
-        
-        // Add watched folder info
+
         if let watchFolderPath = UserDefaults.standard.string(forKey: "WatchFolderPath") {
             let folderItem = NSMenuItem(title: "Watching: \(watchFolderPath)", action: nil, keyEquivalent: "")
             folderItem.isEnabled = false
             menu.addItem(folderItem)
+            
+            menu.addItem(NSMenuItem.separator())
         }
         
         menu.addItem(NSMenuItem.separator())
@@ -362,6 +372,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             alert.informativeText = "Failed to install dependencies. Please install Homebrew and run: brew install \(missing.joined(separator: " "))"
             alert.alertStyle = .critical
             alert.runModal()
+        }
+    }
+    
+    @objc private func handleFolderAccessGranted(_ notification: Notification) {
+        if let url = notification.userInfo?["url"] as? URL {
+            UserDefaults.standard.set(url.path, forKey: "WatchFolderPath")
+            updateMenuBar()
         }
     }
 } 
