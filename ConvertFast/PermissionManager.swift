@@ -27,6 +27,10 @@ class PermissionManager {
         panel.message = "ConvertFast needs access to this folder to monitor and convert files."
         panel.prompt = "Grant Access"
         
+        // Make panel appear on top of other windows
+        panel.level = .floating
+        panel.makeKeyAndOrderFront(nil)
+        
         panel.begin { response in
             if response == .OK, let selectedURL = panel.url {
                 // User selected the folder, now request security-scoped access
