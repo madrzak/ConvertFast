@@ -2,10 +2,10 @@ cask "convertfast" do
   version "1.0.0"
   sha256 "PLACEHOLDER_SHA256" # This will need to be updated with the actual SHA256 of the release
 
-  url "https://github.com/YOUR_USERNAME/ConvertFast/releases/download/v#{version}/ConvertFast-#{version}.zip"
+  url "https://github.com/madrzak/ConvertFast/releases/download/v#{version}/ConvertFast-#{version}.zip"
   name "ConvertFast"
   desc "Menu bar app for automatic media conversion using FFmpeg and cwebp"
-  homepage "https://github.com/YOUR_USERNAME/ConvertFast"
+  homepage "https://github.com/madrzak/ConvertFast"
 
   depends_on formula: "ffmpeg"
   depends_on formula: "webp"
@@ -15,6 +15,6 @@ cask "convertfast" do
 
   zap trash: [
     "~/Library/Application Support/ConvertFast",
-    "~/Library/Preferences/com.YOUR_USERNAME.ConvertFast.plist",
+    "~/Library/Preferences/com.madrzak.ConvertFast.plist",
   ]
 end 

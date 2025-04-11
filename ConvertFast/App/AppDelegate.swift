@@ -312,8 +312,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.showsHiddenFiles = false
-        panel.message = "Select a folder for ConvertFast to monitor"
-        panel.prompt = "Monitor Folder"
+        panel.message = "Select a folder for ConvertFast to watch"
+        panel.prompt = "Watch Folder"
         panel.directoryURL = defaultURL
         
         panel.begin { [weak self] response in
