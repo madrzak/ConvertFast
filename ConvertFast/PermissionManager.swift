@@ -18,46 +18,19 @@ class PermissionManager {
             }
         }
         
-        // Request access using NSOpenPanel
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.directoryURL = url
-        panel.message = "ConvertFast needs access to this folder to monitor and convert files."
-        panel.prompt = "Grant Access"
-        
-        // Make panel appear on top of other windows
-        panel.level = .floating
-        panel.makeKeyAndOrderFront(nil)
-        
-        panel.begin { response in
-            if response == .OK, let selectedURL = panel.url {
-                // User selected the folder, now request security-scoped access
-                let shouldStopAccessing = selectedURL.startAccessingSecurityScopedResource()
-                
-                // Save the bookmark for future use
-                do {
-                    let bookmarkData = try selectedURL.bookmarkData(
-                        options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
-                        includingResourceValuesForKeys: nil,
-                        relativeTo: nil
-                    )
-                    UserDefaults.standard.set(bookmarkData, forKey: "FolderBookmark")
-                    print("✅ Folder access granted and bookmark saved")
-                    completion(true)
-                } catch {
-                    print("❌ Failed to create bookmark: \(error.localizedDescription)")
-                    completion(false)
-                }
-                
-                if shouldStopAccessing {
-                    selectedURL.stopAccessingSecurityScopedResource()
-                }
-            } else {
-                print("❌ User denied folder access")
-                completion(false)
-            }
+        // Create security-scoped bookmark for the URL
+        do {
+            let bookmarkData = try url.bookmarkData(
+                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            UserDefaults.standard.set(bookmarkData, forKey: "FolderBookmark")
+            print("✅ Folder access granted and bookmark saved")
+            completion(true)
+        } catch {
+            print("❌ Failed to create bookmark: \(error.localizedDescription)")
+            completion(false)
         }
     }
     
