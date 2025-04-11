@@ -212,25 +212,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc private func selectWatchFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
+        // Get the default URL (Desktop) if no folder is currently selected
+        let defaultURL = UserDefaults.standard.string(forKey: "WatchFolderPath").map { URL(fileURLWithPath: $0) } ?? FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
         
-        panel.begin { [weak self] response in
-            if response == .OK, let url = panel.url {
-                // Request permission for the selected folder
-                PermissionManager.shared.requestFolderAccess(for: url) { granted in
-                    if granted {
-                        self?.setupFolderMonitoring(for: url)
-                        UserDefaults.standard.set(url.path, forKey: "WatchFolderPath")
-                    } else {
-                        let alert = NSAlert()
-                        alert.messageText = "Permission Denied"
-                        alert.informativeText = "ConvertFast needs permission to access the selected folder. Please try again and grant access when prompted."
-                        alert.alertStyle = .warning
-                        alert.runModal()
-                    }
+        PermissionManager.shared.requestFolderAccess(for: defaultURL) { [weak self] granted in
+            if granted {
+                guard let self = self else { return }
+                if let url = UserDefaults.standard.string(forKey: "WatchFolderPath").map({ URL(fileURLWithPath: $0) }) {
+                    self.setupFolderMonitoring(for: url)
                 }
             }
         }

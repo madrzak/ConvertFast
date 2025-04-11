@@ -11,27 +11,23 @@ class PermissionManager {
     private init() {}
     
     func requestFolderAccess(for url: URL, completion: @escaping (Bool) -> Void) {
-        // Request access using NSOpenPanel
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.directoryURL = url
-        panel.message = "ConvertFast needs access to this folder to monitor and convert files."
-        panel.prompt = "Grant Access"
+        panel.showsHiddenFiles = false
+        panel.message = "Select a folder for ConvertFast to monitor"
+        panel.prompt = "Monitor Folder"
         
-        // Make panel appear on top of other windows
-        panel.level = .floating
-        panel.makeKeyAndOrderFront(nil)
+        // Enable security scope access
+        panel.treatsFilePackagesAsDirectories = true
+        panel.worksWhenModal = true
         
         panel.begin { response in
-            if response == .OK, let selectedURL = panel.url {
-                // User selected the folder, now request security-scoped access
-                let shouldStopAccessing = selectedURL.startAccessingSecurityScopedResource()
-                
-                // Save the bookmark for future use
+            if response == .OK, let url = panel.urls.first {
+                // Create security-scoped bookmark
                 do {
-                    let bookmarkData = try selectedURL.bookmarkData(
+                    let bookmarkData = try url.bookmarkData(
                         options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
                         includingResourceValuesForKeys: nil,
                         relativeTo: nil
@@ -43,7 +39,7 @@ class PermissionManager {
                     NotificationCenter.default.post(
                         name: .folderAccessGranted,
                         object: nil,
-                        userInfo: ["url": selectedURL]
+                        userInfo: ["url": url]
                     )
                     
                     completion(true)
@@ -51,12 +47,8 @@ class PermissionManager {
                     print("❌ Failed to create bookmark: \(error.localizedDescription)")
                     completion(false)
                 }
-                
-                if shouldStopAccessing {
-                    selectedURL.stopAccessingSecurityScopedResource()
-                }
             } else {
-                print("❌ User denied folder access")
+                print("❌ User cancelled folder selection")
                 completion(false)
             }
         }
