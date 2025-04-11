@@ -336,6 +336,14 @@ class ConversionManager {
     
     // Add a method to start a batch conversion
     func startBatchConversion(files: [URL]) {
+        // Don't show progress if there are no files
+        if files.isEmpty {
+            DispatchQueue.main.async {
+                self.updateProgress(totalFiles: 0, completedFiles: 0, currentFileName: "", isConverting: false)
+            }
+            return
+        }
+        
         DispatchQueue.main.async {
             self.updateProgress(totalFiles: files.count, completedFiles: 0, currentFileName: "", isConverting: true)
         }

@@ -89,6 +89,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         progressIndicator.minValue = 0
         progressIndicator.maxValue = 100
         progressIndicator.doubleValue = 0
+        progressIndicator.controlSize = .small
+        progressIndicator.isBezeled = true
         progressIndicator.isHidden = true
         progressView.addSubview(progressIndicator)
         self.progressIndicator = progressIndicator
@@ -177,6 +179,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 progressIndicator.minValue = 0
                 progressIndicator.maxValue = 100
                 progressIndicator.doubleValue = 0
+                progressIndicator.controlSize = .small
+                progressIndicator.isBezeled = true
                 progressView.addSubview(progressIndicator)
                 self.progressIndicator = progressIndicator
                 
@@ -226,6 +230,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         progressIndicator.minValue = 0
         progressIndicator.maxValue = 100
         progressIndicator.doubleValue = 0
+        progressIndicator.controlSize = .small
+        progressIndicator.isBezeled = true
         progressIndicator.isHidden = true
         progressView.addSubview(progressIndicator)
         self.progressIndicator = progressIndicator
