@@ -3,7 +3,7 @@ import Cocoa
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var folderMonitor: FolderMonitor?
-    private var hiddenWindow: NSWindow?
+//    private var hiddenWindow: NSWindow?
     private var conversionManager: ConversionManager!
     private var isEnabled = false {
         didSet {
@@ -39,20 +39,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         conversionManager.testCommands()
         
         // Create a hidden window to keep the app alive
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.level = .floating
-        window.isReleasedWhenClosed = false
-        window.hidesOnDeactivate = true
-        window.alphaValue = 0
-        window.orderOut(nil)
-        hiddenWindow = window
+//        let window = NSWindow(
+//            contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+//            styleMask: [.borderless],
+//            backing: .buffered,
+//            defer: false
+//        )
+//        window.isOpaque = false
+//        window.backgroundColor = .clear
+//        window.level = .floating
+//        window.isReleasedWhenClosed = false
+//        window.hidesOnDeactivate = true
+//        window.alphaValue = 0
+//        window.orderOut(nil)
+//        hiddenWindow = window
         
         // Create a simple status item with text
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

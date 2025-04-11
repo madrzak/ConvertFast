@@ -37,9 +37,8 @@ class ConversionManager {
     private func setupAudioPlayer() {
         print("🔊 Setting up audio player...")
         
-        // Try to find the sound file
-        if let soundURL = Bundle.main.url(forResource: "ding", withExtension: "mp3", subdirectory: "Resources") {
-            print("✅ Found sound file at: \(soundURL.path)")
+        if let soundURL = Bundle.main.url(forResource: "ding", withExtension: "mp3") {
+            print("✅ Found sound file at alternative location: \(soundURL.path)")
             do {
                 audioPlayer = try AVAudioPlayer(contentsOf: soundURL)
                 audioPlayer?.prepareToPlay()
@@ -48,20 +47,7 @@ class ConversionManager {
                 print("❌ Error initializing audio player: \(error)")
             }
         } else {
-            print("❌ Could not find ding.mp3 in Resources directory")
-            // Try alternative locations
-            if let soundURL = Bundle.main.url(forResource: "ding", withExtension: "mp3") {
-                print("✅ Found sound file at alternative location: \(soundURL.path)")
-                do {
-                    audioPlayer = try AVAudioPlayer(contentsOf: soundURL)
-                    audioPlayer?.prepareToPlay()
-                    print("✅ Audio player initialized successfully")
-                } catch {
-                    print("❌ Error initializing audio player: \(error)")
-                }
-            } else {
-                print("❌ Could not find ding.mp3 in any location")
-            }
+            print("❌ Could not find ding.mp3 in any location")
         }
     }
     
@@ -105,8 +91,8 @@ class ConversionManager {
                 isConverting: newProgress.isConverting
             )
             
-            // Play sound when all files are completed
-            if completedFiles == newProgress.totalFiles && newProgress.totalFiles > 0 {
+            // Play sound only when all files are completed AND there were files to convert
+            if completedFiles == newProgress.totalFiles && newProgress.totalFiles > 0 && newProgress.isConverting == false {
                 playCompletionSound()
             }
         }
