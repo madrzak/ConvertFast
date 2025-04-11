@@ -215,11 +215,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Get the default URL (Desktop) if no folder is currently selected
         let defaultURL = UserDefaults.standard.string(forKey: "WatchFolderPath").map { URL(fileURLWithPath: $0) } ?? FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
         
-        PermissionManager.shared.requestFolderAccess(for: defaultURL) { [weak self] granted in
-            if granted {
-                guard let self = self else { return }
-                if let url = UserDefaults.standard.string(forKey: "WatchFolderPath").map({ URL(fileURLWithPath: $0) }) {
-                    self.setupFolderMonitoring(for: url)
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.showsHiddenFiles = false
+        panel.message = "Select a folder for ConvertFast to monitor"
+        panel.prompt = "Monitor Folder"
+        panel.directoryURL = defaultURL
+        
+        panel.begin { [weak self] response in
+            if response == .OK, let url = panel.urls.first {
+                // Request permission for the selected folder
+                PermissionManager.shared.requestFolderAccess(for: url) { granted in
+                    if granted {
+                        self?.setupFolderMonitoring(for: url)
+                        UserDefaults.standard.set(url.path, forKey: "WatchFolderPath")
+                    }
                 }
             }
         }
