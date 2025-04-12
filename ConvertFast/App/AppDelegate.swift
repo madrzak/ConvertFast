@@ -8,12 +8,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var isEnabled: Bool = false {
         didSet {
             UserDefaults.standard.set(isEnabled, forKey: "ConvertFastEnabled")
-            updateMenuBar()
+            menuManager.updateEnabledState(isEnabled)
         }
     }
-    private var progressItem: NSMenuItem?
-    private var progressIndicator: NSProgressIndicator?
-    private var statusLabel: NSTextField?
     
     private func getRandomIdleMessage() -> String {
         let idleMessages = [
@@ -38,17 +35,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Test command execution
         conversionManager.testCommands()
                 
-        // Create a simple status item with text
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let icon = NSImage(named: "MenuIconV2") {
-            icon.isTemplate = true // Enables dark/light mode adaptation
-            statusItem.button?.image = icon
-        } else {
-            statusItem.button?.title = "⚡"
+        // Create a status item with fixed length
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        
+        // Configure the status item button
+        if let button = statusItem.button {
+            if let icon = NSImage(named: "MenuIconV2") {
+                icon.isTemplate = true // Enables dark/light mode adaptation
+                button.image = icon
+            } else {
+                button.title = "⚡"
+            }
+            button.toolTip = "ConvertFast"
         }
         
         // Initialize MenuManager
-        menuManager = MenuManager(statusItem: statusItem, isEnabled: isEnabled, conversionManager: conversionManager)
+        menuManager = MenuManager(statusItem: statusItem, isEnabled: isEnabled, conversionManager: conversionManager, appDelegate: self)
         statusItem.menu = menuManager.createMenu()
         
         // Check dependencies
@@ -86,114 +88,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
            let message = userInfo["message"] as? String {
             menuManager.updateProgress(progress, message: message)
         }
-    }
-    
-    private func updateMenuBar() {
-        let menu = NSMenu()
-    
-        
-        let toggleItem = NSMenuItem(title: "Enable Auto ConvertFast", action: #selector(toggleAutoConvert), keyEquivalent: "")
-        toggleItem.state = isEnabled ? .on : .off
-        menu.addItem(toggleItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        let selectFolderItem = NSMenuItem(title: "Select Watch Folder...", action: #selector(selectWatchFolder), keyEquivalent: "")
-        menu.addItem(selectFolderItem)
-        
-        let forceConvertItem = NSMenuItem(title: "ConvertFast Now", action: #selector(forceConvert), keyEquivalent: "r")
-        menu.addItem(forceConvertItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        // Add progress indicator
-        let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
-        let progressIndicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
-        progressIndicator.style = .bar
-        progressIndicator.isIndeterminate = false
-        progressIndicator.minValue = 0
-        progressIndicator.maxValue = 100
-        progressIndicator.doubleValue = 0
-        progressIndicator.controlSize = .small
-        progressIndicator.isBezeled = true
-        progressIndicator.isHidden = true
-        progressView.addSubview(progressIndicator)
-        self.progressIndicator = progressIndicator
-        
-        let progressItem = NSMenuItem(title: getRandomIdleMessage(), action: nil, keyEquivalent: "")
-        progressItem.isEnabled = false
-        menu.addItem(progressItem)
-        self.progressItem = progressItem
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        // Add version info
-        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-            let versionItem = NSMenuItem(title: "ConvertFast \(version)", action: nil, keyEquivalent: "")
-            versionItem.isEnabled = false
-            menu.addItem(versionItem)
-        }
-        
-        // Add dependency versions
-        let ffmpegVersion = getCommandVersion("ffmpeg")
-        let ffmpegStatus = checkIfCommandExists("ffmpeg") ? "(ok)" : "❌"
-        let ffmpegItem = NSMenuItem(title: "FFmpeg \(ffmpegStatus): \(ffmpegVersion)", action: nil, keyEquivalent: "")
-        ffmpegItem.isEnabled = false
-        menu.addItem(ffmpegItem)
-        
-        let cwebpVersion = getCommandVersion("cwebp")
-        let cwebpStatus = checkIfCommandExists("cwebp") ? "(ok)" : "❌"
-        let cwebpItem = NSMenuItem(title: "cwebp \(cwebpStatus): \(cwebpVersion)", action: nil, keyEquivalent: "")
-        cwebpItem.isEnabled = false
-        menu.addItem(cwebpItem)
-
-        if let watchFolderPath = UserDefaults.standard.string(forKey: "WatchFolderPath") {
-            let folderItem = NSMenuItem(title: "Watching: \(watchFolderPath)", action: nil, keyEquivalent: "")
-            folderItem.isEnabled = false
-            menu.addItem(folderItem)
-            
-            menu.addItem(NSMenuItem.separator())
-        }
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        
-        statusItem.menu = menu
-    }
-    
-    private func getCommandVersion(_ command: String) -> String {
-        // Get the command path from ConversionManager
-        let commandPath = conversionManager.getCommandPath(command)
-        
-        let process = Process()
-        process.launchPath = "/bin/bash"
-        
-        // Different version command based on the tool
-        let versionCommand = command == "ffmpeg" ? 
-            "\"\(commandPath)\" -version | head -n 1 | awk '{print $3}'" :
-            "\"\(commandPath)\" -version 2>&1 | head -n 1"
-            
-        process.arguments = ["-c", versionCommand]
-        
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        
-        do {
-            try process.run()
-            process.waitUntilExit()
-            
-            if process.terminationStatus == 0 {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
-                    return output
-                }
-            }
-        } catch {
-            print("Error getting version for \(command): \(error)")
-        }
-        
-        return "Not found"
     }
     
     @objc func toggleAutoConvert() {
@@ -373,7 +267,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleFolderAccessGranted(_ notification: Notification) {
         if let url = notification.userInfo?["url"] as? URL {
             UserDefaults.standard.set(url.path, forKey: "WatchFolderPath")
-            updateMenuBar()
+            menuManager.updateMenu()
         }
     }
 } 

@@ -27,6 +27,10 @@ class SettingsWindowController: NSWindowController {
             "mp4Preset": "fast"
         ]
         
+        // Ensure window is visible and centered
+        window?.center()
+        window?.makeKeyAndOrderFront(nil)
+        
         setupUI()
         updateUI()
     }

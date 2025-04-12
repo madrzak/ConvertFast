@@ -7,32 +7,38 @@ class MenuManager {
     private var isEnabled: Bool
     private var conversionManager: ConversionManager
     private var settingsWindowController: SettingsWindowController?
+    private var appDelegate: AppDelegate?
     
-    init(statusItem: NSStatusItem, isEnabled: Bool, conversionManager: ConversionManager) {
+    init(statusItem: NSStatusItem, isEnabled: Bool, conversionManager: ConversionManager, appDelegate: AppDelegate) {
         self.statusItem = statusItem
         self.isEnabled = isEnabled
         self.conversionManager = conversionManager
+        self.appDelegate = appDelegate
     }
     
     func createMenu() -> NSMenu {
         let menu = NSMenu()
         
-        let toggleItem = NSMenuItem(title: "Enable Auto-Convert", action: #selector(AppDelegate.toggleAutoConvert), keyEquivalent: "")
+        let toggleItem = NSMenuItem(title: "Enable Auto-Convert", action: #selector(toggleAutoConvert), keyEquivalent: "")
+        toggleItem.target = self
         toggleItem.state = isEnabled ? .on : .off
         menu.addItem(toggleItem)
         
         menu.addItem(NSMenuItem.separator())
         
-        let selectFolderItem = NSMenuItem(title: "Select Watch Folder...", action: #selector(AppDelegate.selectWatchFolder), keyEquivalent: "")
+        let selectFolderItem = NSMenuItem(title: "Select Watch Folder...", action: #selector(selectWatchFolder), keyEquivalent: "")
+        selectFolderItem.target = self
         menu.addItem(selectFolderItem)
         
-        let forceConvertItem = NSMenuItem(title: "Force Convert Now", action: #selector(AppDelegate.forceConvert), keyEquivalent: "r")
+        let forceConvertItem = NSMenuItem(title: "Force Convert Now", action: #selector(forceConvert), keyEquivalent: "r")
+        forceConvertItem.target = self
         menu.addItem(forceConvertItem)
         
         menu.addItem(NSMenuItem.separator())
         
         // Add Settings menu item
         let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ",")
+        settingsItem.target = self
         menu.addItem(settingsItem)
         
         menu.addItem(NSMenuItem.separator())
@@ -92,15 +98,31 @@ class MenuManager {
         return menu
     }
     
-    @objc private func showSettings() {
+    func updateEnabledState(_ enabled: Bool) {
+        isEnabled = enabled
+        DispatchQueue.main.async {
+            self.updateMenu()
+        }
+    }
+    
+    func updateMenu() {
+        DispatchQueue.main.async {
+            let newMenu = self.createMenu()
+            self.statusItem.menu = newMenu
+        }
+    }
+    
+    @objc func showSettings() {
         if settingsWindowController == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 400, height: 200),
-                styleMask: [.titled, .closable],
+                contentRect: NSRect(x: 0, y: 0, width: 400, height: 220),
+                styleMask: [.titled, .closable, .miniaturizable],
                 backing: .buffered,
                 defer: false
             )
-            window.title = "Settings"
+            window.title = "ConvertFast Settings"
+            window.center()
+            window.isReleasedWhenClosed = false
             settingsWindowController = SettingsWindowController(window: window)
         }
         
@@ -108,9 +130,24 @@ class MenuManager {
         NSApp.activate(ignoringOtherApps: true)
     }
     
+    @objc func toggleAutoConvert() {
+        appDelegate?.toggleAutoConvert()
+    }
+    
+    @objc func selectWatchFolder() {
+        appDelegate?.selectWatchFolder()
+    }
+    
+    @objc func forceConvert() {
+        appDelegate?.forceConvert()
+    }
+    
     func updateProgress(_ progress: Double, message: String) {
-        progressIndicator?.doubleValue = progress
-        progressItem?.title = message
+        DispatchQueue.main.async {
+            self.progressIndicator?.doubleValue = progress
+            self.progressItem?.title = message
+            self.updateMenu()
+        }
     }
     
     private func getRandomIdleMessage() -> String {
