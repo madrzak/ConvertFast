@@ -113,19 +113,16 @@ class MenuManager {
     }
     
     @objc func showSettings() {
+        print("Showing settings window")
         if settingsWindowController == nil {
-            let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 400, height: 220),
-                styleMask: [.titled, .closable, .miniaturizable],
-                backing: .buffered,
-                defer: false
-            )
-            window.title = "ConvertFast Settings"
-            window.center()
-            window.isReleasedWhenClosed = false
-            settingsWindowController = SettingsWindowController(window: window)
+            print("Creating new settings window controller")
+            settingsWindowController = SettingsWindowController()
+            
+            // Ensure window is loaded
+            settingsWindowController?.loadWindow()
         }
         
+        print("Showing window")
         settingsWindowController?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

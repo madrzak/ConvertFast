@@ -17,8 +17,36 @@ class SettingsWindowController: NSWindowController {
         (51, "Lowest Quality - Smallest Size")
     ]
     
+    override init(window: NSWindow?) {
+        super.init(window: window)
+        print("Window controller initialized with window")
+    }
+    
+    convenience init() {
+        print("Creating new settings window")
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 220),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "ConvertFast Settings"
+        window.center()
+        window.isReleasedWhenClosed = false
+        
+        self.init(window: window)
+        
+        self.setupUI()
+        self.updateUI()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+    
     override func windowDidLoad() {
         super.windowDidLoad()
+        print("Window did load")
         
         // Load saved settings
         settings = UserDefaults.standard.dictionary(forKey: "ConversionSettings") ?? [
@@ -27,16 +55,25 @@ class SettingsWindowController: NSWindowController {
             "mp4Preset": "fast"
         ]
         
-        // Ensure window is visible and centered
-        window?.center()
-        window?.makeKeyAndOrderFront(nil)
-        
         setupUI()
         updateUI()
+        
+        print("Window setup complete")
     }
     
     private func setupUI() {
-        guard let contentView = window?.contentView else { return }
+        print("Setting up UI")
+        print("window is nil? \(window == nil)")
+        print("contentView is nil? \(window?.contentView == nil)")
+
+        guard let contentView = window?.contentView else { 
+            print("Content view is nil, cannot setup UI")
+            return 
+        }
+        
+        // Set background color to make sure content view is visible
+        contentView.wantsLayer = true
+        contentView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
         
         // Sound toggle
         let soundLabel = NSTextField(labelWithString: "Play sound when conversion completes")
@@ -124,9 +161,7 @@ class SettingsWindowController: NSWindowController {
             presetPopup.widthAnchor.constraint(equalToConstant: 150)
         ])
         
-        // Set window size
-        window?.setContentSize(NSSize(width: 400, height: 220))
-        window?.center()
+        print("UI setup complete")
     }
     
     private func updateUI() {
