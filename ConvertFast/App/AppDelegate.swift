@@ -2,9 +2,10 @@ import Cocoa
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private var folderMonitor: FolderMonitor?
+    private var menuManager: MenuManager!
     private var conversionManager: ConversionManager!
-    private var isEnabled = false {
+    private var folderMonitor: FolderMonitor?
+    private var isEnabled: Bool = false {
         didSet {
             UserDefaults.standard.set(isEnabled, forKey: "ConvertFastEnabled")
             updateMenuBar()
@@ -46,76 +47,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem.button?.title = "⚡"
         }
         
-        // Create menu
-        let menu = NSMenu()
-        
-        let toggleItem = NSMenuItem(title: "Enable Auto-Convert", action: #selector(toggleAutoConvert), keyEquivalent: "")
-        toggleItem.state = isEnabled ? .on : .off
-        menu.addItem(toggleItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        let selectFolderItem = NSMenuItem(title: "Select Watch Folder...", action: #selector(selectWatchFolder), keyEquivalent: "")
-        menu.addItem(selectFolderItem)
-        
-        let forceConvertItem = NSMenuItem(title: "Force Convert Now", action: #selector(forceConvert), keyEquivalent: "r")
-        menu.addItem(forceConvertItem)
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        // Add progress indicator
-        let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
-        let progressIndicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
-        progressIndicator.style = .bar
-        progressIndicator.isIndeterminate = false
-        progressIndicator.minValue = 0
-        progressIndicator.maxValue = 100
-        progressIndicator.doubleValue = 0
-        progressIndicator.controlSize = .small
-        progressIndicator.isBezeled = true
-        progressIndicator.isHidden = true
-        progressView.addSubview(progressIndicator)
-        self.progressIndicator = progressIndicator
-        
-        let progressItem = NSMenuItem(title: getRandomIdleMessage(), action: nil, keyEquivalent: "")
-        progressItem.isEnabled = false
-        menu.addItem(progressItem)
-        self.progressItem = progressItem
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        // Add version info
-        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-            let versionItem = NSMenuItem(title: "ConvertFast v\(version)", action: nil, keyEquivalent: "")
-            versionItem.isEnabled = false
-            menu.addItem(versionItem)
-        }
-        
-        // Add dependency versions
-        let ffmpegVersion = getCommandVersion("ffmpeg")
-        let ffmpegStatus = checkIfCommandExists("ffmpeg") ? "(ok)" : "❌"
-        let ffmpegItem = NSMenuItem(title: "FFmpeg \(ffmpegStatus): \(ffmpegVersion)", action: nil, keyEquivalent: "")
-        ffmpegItem.isEnabled = false
-        menu.addItem(ffmpegItem)
-        
-        let cwebpVersion = getCommandVersion("cwebp")
-        let cwebpStatus = checkIfCommandExists("cwebp") ? "(ok)" : "❌"
-        let cwebpItem = NSMenuItem(title: "cwebp \(cwebpStatus): \(cwebpVersion)", action: nil, keyEquivalent: "")
-        cwebpItem.isEnabled = false
-        menu.addItem(cwebpItem)
-        
-        // Add watched folder info
-        if let watchFolderPath = UserDefaults.standard.string(forKey: "WatchFolderPath") {
-            let folderItem = NSMenuItem(title: "Watching: \(watchFolderPath)", action: nil, keyEquivalent: "")
-            folderItem.isEnabled = false
-            menu.addItem(folderItem)
-        }
-        
-        menu.addItem(NSMenuItem.separator())
-        
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        
-        statusItem.menu = menu
+        // Initialize MenuManager
+        menuManager = MenuManager(statusItem: statusItem, isEnabled: isEnabled, conversionManager: conversionManager)
+        statusItem.menu = menuManager.createMenu()
         
         // Check dependencies
         checkDependencies()
@@ -147,42 +81,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc private func handleConversionProgressUpdated(_ notification: Notification) {
-        guard let progress = notification.userInfo?["progress"] as? ConversionProgress else { return }
-        
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            if progress.isConverting {
-                // Switch to progress view
-                let progressView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
-                let progressIndicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
-                progressIndicator.style = .bar
-                progressIndicator.isIndeterminate = false
-                progressIndicator.minValue = 0
-                progressIndicator.maxValue = 100
-                progressIndicator.doubleValue = 0
-                progressIndicator.controlSize = .small
-                progressIndicator.isBezeled = true
-                progressView.addSubview(progressIndicator)
-                self.progressIndicator = progressIndicator
-                
-                // Update progress value
-                if progress.totalFiles > 0 {
-                    let percentage = Double(progress.completedFiles) / Double(progress.totalFiles) * 100
-                    progressIndicator.doubleValue = percentage
-                    self.progressItem?.view = progressView
-                    self.progressItem?.title = "Converting: \(progress.completedFiles)/\(progress.totalFiles) files"
-                } else {
-                    progressIndicator.isIndeterminate = true
-                    progressIndicator.startAnimation(nil)
-                    self.progressItem?.view = progressView
-                    self.progressItem?.title = "Converting: \(progress.currentFileName)"
-                }
-            } else {
-                // Switch back to regular menu item
-                self.progressItem?.view = nil
-                self.progressItem?.title = self.getRandomIdleMessage()
-            }
+        if let userInfo = notification.userInfo,
+           let progress = userInfo["progress"] as? Double,
+           let message = userInfo["message"] as? String {
+            menuManager.updateProgress(progress, message: message)
         }
     }
     
@@ -294,7 +196,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return "Not found"
     }
     
-    @objc private func toggleAutoConvert() {
+    @objc func toggleAutoConvert() {
         isEnabled.toggle()
         if isEnabled {
             folderMonitor?.startMonitoring()
@@ -303,7 +205,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
-    @objc private func selectWatchFolder() {
+    @objc func selectWatchFolder() {
         // Get the default URL (Desktop) if no folder is currently selected
         let defaultURL = UserDefaults.standard.string(forKey: "WatchFolderPath").map { URL(fileURLWithPath: $0) } ?? FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
         
@@ -329,7 +231,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
-    @objc private func forceConvert() {
+    @objc func forceConvert() {
         if let folderMonitor = folderMonitor {
             folderMonitor.forceConvert()
         } else {
