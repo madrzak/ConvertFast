@@ -27,11 +27,33 @@ class ConversionManager {
     private var conversionProgress = ConversionProgress(totalFiles: 0, completedFiles: 0, currentFileName: "", isConverting: false)
     private let conversionQueue = DispatchQueue(label: "com.convertfast.conversion", qos: .userInitiated)
     private var audioPlayer: AVAudioPlayer?
+    private var settings: [String: Any] = [:]
     
     init() {
         loadTemplates()
         findCommandPaths()
         setupAudioPlayer()
+        loadSettings()
+        
+        // Observe settings changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(settingsChanged),
+            name: .settingsChanged,
+            object: nil
+        )
+    }
+    
+    private func loadSettings() {
+        settings = UserDefaults.standard.dictionary(forKey: "ConversionSettings") ?? [
+            "soundEnabled": true,
+            "mp4Quality": 23,
+            "mp4Preset": "fast"
+        ]
+    }
+    
+    @objc private func settingsChanged() {
+        loadSettings()
     }
     
     private func setupAudioPlayer() {
@@ -52,16 +74,8 @@ class ConversionManager {
     }
     
     private func playCompletionSound() {
-        print("🔊 Attempting to play completion sound...")
-        if let player = audioPlayer {
-            player.currentTime = 0
-            if player.play() {
-                print("✅ Sound played successfully")
-            } else {
-                print("❌ Failed to play sound")
-            }
-        } else {
-            print("❌ Audio player is nil")
+        if settings["soundEnabled"] as? Bool ?? true {
+            audioPlayer?.play()
         }
     }
     
@@ -136,13 +150,13 @@ class ConversionManager {
             ConversionTemplate(
                 inputExtension: "mp4",
                 outputExtension: "mp4",
-                command: "ffmpeg -i $input -vcodec libx264 -crf 23 -preset fast -movflags +faststart $output",
+                command: "ffmpeg -i $input -vcodec libx264 -crf $quality -preset $preset -movflags +faststart $output",
                 deleteOriginal: false
             ),
             ConversionTemplate(
                 inputExtension: "mov",
                 outputExtension: "mp4",
-                command: "ffmpeg -i $input -vcodec libx264 -crf 23 -preset fast -movflags +faststart $output",
+                command: "ffmpeg -i $input -vcodec libx264 -crf $quality -preset $preset -movflags +faststart $output",
                 deleteOriginal: true
             ),
             ConversionTemplate(
@@ -280,6 +294,22 @@ class ConversionManager {
         } else {
             print("❌ cwebp path not found")
         }
+    }
+    
+    private func processCommand(_ command: String, input: String, output: String) -> String {
+        var processedCommand = command
+            .replacingOccurrences(of: "$input", with: input)
+            .replacingOccurrences(of: "$output", with: output)
+        
+        // Replace MP4-specific variables
+        if let quality = settings["mp4Quality"] as? Int {
+            processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(quality))
+        }
+        if let preset = settings["mp4Preset"] as? String {
+            processedCommand = processedCommand.replacingOccurrences(of: "$preset", with: preset)
+        }
+        
+        return processedCommand
     }
     
     func processFile(at url: URL) {

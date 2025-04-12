@@ -6,6 +6,7 @@ class MenuManager {
     private var progressItem: NSMenuItem?
     private var isEnabled: Bool
     private var conversionManager: ConversionManager
+    private var settingsWindowController: SettingsWindowController?
     
     init(statusItem: NSStatusItem, isEnabled: Bool, conversionManager: ConversionManager) {
         self.statusItem = statusItem
@@ -27,6 +28,12 @@ class MenuManager {
         
         let forceConvertItem = NSMenuItem(title: "Force Convert Now", action: #selector(AppDelegate.forceConvert), keyEquivalent: "r")
         menu.addItem(forceConvertItem)
+        
+        menu.addItem(NSMenuItem.separator())
+        
+        // Add Settings menu item
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ",")
+        menu.addItem(settingsItem)
         
         menu.addItem(NSMenuItem.separator())
         
@@ -83,6 +90,22 @@ class MenuManager {
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         
         return menu
+    }
+    
+    @objc private func showSettings() {
+        if settingsWindowController == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 400, height: 200),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "Settings"
+            settingsWindowController = SettingsWindowController(window: window)
+        }
+        
+        settingsWindowController?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
     
     func updateProgress(_ progress: Double, message: String) {
