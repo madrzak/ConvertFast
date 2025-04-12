@@ -41,27 +41,6 @@ brew install --cask convertfast
 3. Choose a folder to watch using "Select Watch Folder..."
 4. Add files to the watched folder to trigger automatic conversion
 
-## Customizing Conversion Templates
-
-Create a `conversion_templates.json` file in the app's Application Support directory:
-
-```json
-{
-    "templates": [
-        {
-            "inputExtension": "mp4",
-            "outputExtension": "mp4",
-            "command": "ffmpeg -i $input -vcodec libx264 -crf 23 -preset fast $output",
-            "deleteOriginal": true
-        }
-    ]
-}
-```
-
-Available placeholders:
-- `$input`: Path to the input file
-- `$output`: Path to the output file
-
 ## Requirements
 
 - macOS Monterey or later
