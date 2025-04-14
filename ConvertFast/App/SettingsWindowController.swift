@@ -6,6 +6,8 @@ class SettingsWindowController: NSWindowController {
     private var qualityLabel: NSTextField!
     private var qualityDescription: NSTextField!
     private var presetPopup: NSPopUpButton!
+    private var jpegQualitySlider: NSSlider!
+    private var jpegQualityLabel: NSTextField!
     private var settings: [String: Any] = [:]
     
     // CRF quality presets
@@ -25,7 +27,7 @@ class SettingsWindowController: NSWindowController {
     convenience init() {
         print("Creating new settings window")
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 220),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 320),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -128,6 +130,30 @@ class SettingsWindowController: NSWindowController {
         presetPopup.toolTip = "Faster presets encode quicker but produce larger files. Slower presets take longer but produce smaller files."
         mp4Group.addSubview(presetPopup)
         
+        // Image Settings group
+        let imageGroup = NSBox()
+        imageGroup.title = "Image Conversion Settings"
+        imageGroup.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(imageGroup)
+        
+        // JPEG Quality slider
+        let jpegQualityTitle = NSTextField(labelWithString: "JPEG Quality")
+        jpegQualityTitle.translatesAutoresizingMaskIntoConstraints = false
+        imageGroup.addSubview(jpegQualityTitle)
+        
+        jpegQualitySlider = NSSlider(target: self, action: #selector(jpegQualityChanged))
+        jpegQualitySlider.translatesAutoresizingMaskIntoConstraints = false
+        jpegQualitySlider.minValue = 0
+        jpegQualitySlider.maxValue = 100
+        jpegQualitySlider.doubleValue = 85
+        jpegQualitySlider.isContinuous = true
+        jpegQualitySlider.toolTip = "Higher values mean better quality but larger file size."
+        imageGroup.addSubview(jpegQualitySlider)
+        
+        jpegQualityLabel = NSTextField(labelWithString: "85")
+        jpegQualityLabel.translatesAutoresizingMaskIntoConstraints = false
+        imageGroup.addSubview(jpegQualityLabel)
+        
         // Layout constraints
         NSLayoutConstraint.activate([
             soundLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
@@ -140,7 +166,7 @@ class SettingsWindowController: NSWindowController {
             mp4Group.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             mp4Group.topAnchor.constraint(equalTo: soundLabel.bottomAnchor, constant: 20),
             
-            qualityTitle.leadingAnchor.constraint(equalTo: mp4Group.leadingAnchor, constant: 20),
+            qualityTitle.leadingAnchor.constraint(equalTo: mp4Group.leadingAnchor, constant: 10),
             qualityTitle.topAnchor.constraint(equalTo: mp4Group.topAnchor, constant: 30),
             
             qualitySlider.leadingAnchor.constraint(equalTo: qualityTitle.trailingAnchor, constant: 20),
@@ -153,12 +179,27 @@ class SettingsWindowController: NSWindowController {
             qualityDescription.leadingAnchor.constraint(equalTo: qualityTitle.leadingAnchor),
             qualityDescription.topAnchor.constraint(equalTo: qualityTitle.bottomAnchor, constant: 4),
             
-            presetLabel.leadingAnchor.constraint(equalTo: mp4Group.leadingAnchor, constant: 20),
+            presetLabel.leadingAnchor.constraint(equalTo: mp4Group.leadingAnchor, constant: 10),
             presetLabel.topAnchor.constraint(equalTo: qualityDescription.bottomAnchor, constant: 20),
             
             presetPopup.leadingAnchor.constraint(equalTo: presetLabel.trailingAnchor, constant: 20),
             presetPopup.centerYAnchor.constraint(equalTo: presetLabel.centerYAnchor),
-            presetPopup.widthAnchor.constraint(equalToConstant: 150)
+            presetPopup.widthAnchor.constraint(equalToConstant: 150),
+            
+            // Image settings constraints
+            imageGroup.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            imageGroup.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            imageGroup.topAnchor.constraint(equalTo: mp4Group.bottomAnchor, constant: 20),
+            
+            jpegQualityTitle.leadingAnchor.constraint(equalTo: imageGroup.leadingAnchor, constant: 10),
+            jpegQualityTitle.topAnchor.constraint(equalTo: imageGroup.topAnchor, constant: 30),
+            
+            jpegQualitySlider.leadingAnchor.constraint(equalTo: jpegQualityTitle.trailingAnchor, constant: 20),
+            jpegQualitySlider.centerYAnchor.constraint(equalTo: jpegQualityTitle.centerYAnchor),
+            jpegQualitySlider.widthAnchor.constraint(equalToConstant: 200),
+            
+            jpegQualityLabel.leadingAnchor.constraint(equalTo: jpegQualitySlider.trailingAnchor, constant: 8),
+            jpegQualityLabel.centerYAnchor.constraint(equalTo: jpegQualityTitle.centerYAnchor)
         ])
         
         print("UI setup complete")
@@ -195,6 +236,12 @@ class SettingsWindowController: NSWindowController {
     
     @objc private func presetChanged() {
         settings["mp4Preset"] = presetPopup.selectedItem?.title
+        saveSettings()
+    }
+    
+    @objc private func jpegQualityChanged() {
+        settings["jpegQuality"] = Int(jpegQualitySlider.doubleValue)
+        jpegQualityLabel.stringValue = String(Int(jpegQualitySlider.doubleValue))
         saveSettings()
     }
     
