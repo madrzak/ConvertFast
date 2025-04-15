@@ -54,7 +54,8 @@ class SettingsWindowController: NSWindowController {
         settings = UserDefaults.standard.dictionary(forKey: "ConversionSettings") ?? [
             "soundEnabled": true,
             "mp4Quality": 23,
-            "mp4Preset": "fast"
+            "mp4Preset": "fast",
+            "jpegQuality": 85
         ]
         
         setupUI()
@@ -159,7 +160,7 @@ class SettingsWindowController: NSWindowController {
             soundLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             soundLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
             
-            soundToggle.leadingAnchor.constraint(equalTo: soundLabel.trailingAnchor, constant: 8),
+            soundToggle.leadingAnchor.constraint(equalTo: soundLabel.trailingAnchor, constant: 20),
             soundToggle.centerYAnchor.constraint(equalTo: soundLabel.centerYAnchor),
             
             mp4Group.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
@@ -168,6 +169,7 @@ class SettingsWindowController: NSWindowController {
             
             qualityTitle.leadingAnchor.constraint(equalTo: mp4Group.leadingAnchor, constant: 10),
             qualityTitle.topAnchor.constraint(equalTo: mp4Group.topAnchor, constant: 30),
+            qualityTitle.widthAnchor.constraint(equalToConstant: 100),
             
             qualitySlider.leadingAnchor.constraint(equalTo: qualityTitle.trailingAnchor, constant: 20),
             qualitySlider.centerYAnchor.constraint(equalTo: qualityTitle.centerYAnchor),
@@ -181,6 +183,7 @@ class SettingsWindowController: NSWindowController {
             
             presetLabel.leadingAnchor.constraint(equalTo: mp4Group.leadingAnchor, constant: 10),
             presetLabel.topAnchor.constraint(equalTo: qualityDescription.bottomAnchor, constant: 20),
+            presetLabel.widthAnchor.constraint(equalToConstant: 100),
             
             presetPopup.leadingAnchor.constraint(equalTo: presetLabel.trailingAnchor, constant: 20),
             presetPopup.centerYAnchor.constraint(equalTo: presetLabel.centerYAnchor),
@@ -193,6 +196,7 @@ class SettingsWindowController: NSWindowController {
             
             jpegQualityTitle.leadingAnchor.constraint(equalTo: imageGroup.leadingAnchor, constant: 10),
             jpegQualityTitle.topAnchor.constraint(equalTo: imageGroup.topAnchor, constant: 30),
+            jpegQualityTitle.widthAnchor.constraint(equalToConstant: 100),
             
             jpegQualitySlider.leadingAnchor.constraint(equalTo: jpegQualityTitle.trailingAnchor, constant: 20),
             jpegQualitySlider.centerYAnchor.constraint(equalTo: jpegQualityTitle.centerYAnchor),
@@ -212,6 +216,10 @@ class SettingsWindowController: NSWindowController {
         if let preset = settings["mp4Preset"] as? String {
             presetPopup.selectItem(withTitle: preset)
         }
+        
+        // Update JPEG quality controls
+        jpegQualitySlider.doubleValue = settings["jpegQuality"] as? Double ?? 85
+        jpegQualityLabel.stringValue = String(Int(jpegQualitySlider.doubleValue))
     }
     
     private func updateQualityDescription(_ value: Int) {
