@@ -72,14 +72,14 @@ class MenuManager {
         }
         
         // Add dependency versions
-        let ffmpegVersion = getCommandVersion("ffmpeg")
-        let ffmpegStatus = checkIfCommandExists("ffmpeg") ? "(ok)" : "❌"
+        let ffmpegVersion = DependencyManager.shared.getCommandVersion("ffmpeg")
+        let ffmpegStatus = UserDefaults.standard.bool(forKey: "ffmpegExists") ? "(ok)" : "❌"
         let ffmpegItem = NSMenuItem(title: "FFmpeg \(ffmpegStatus): \(ffmpegVersion)", action: nil, keyEquivalent: "")
         ffmpegItem.isEnabled = false
         menu.addItem(ffmpegItem)
         
-        let cwebpVersion = getCommandVersion("cwebp")
-        let cwebpStatus = checkIfCommandExists("cwebp") ? "(ok)" : "❌"
+        let cwebpVersion = DependencyManager.shared.getCommandVersion("cwebp")
+        let cwebpStatus = UserDefaults.standard.bool(forKey: "cwebpExists") ? "(ok)" : "❌"
         let cwebpItem = NSMenuItem(title: "cwebp \(cwebpStatus): \(cwebpVersion)", action: nil, keyEquivalent: "")
         cwebpItem.isEnabled = false
         menu.addItem(cwebpItem)
