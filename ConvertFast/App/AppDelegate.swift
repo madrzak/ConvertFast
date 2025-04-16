@@ -20,9 +20,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Initialize ConversionManager
         conversionManager = ConversionManager()
-        
-        // Test command execution
-        conversionManager.testCommands()
                 
         // Create a status item with fixed length
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)

@@ -262,40 +262,6 @@ class ConversionManager {
         }
     }
     
-    func testCommands() {
-        print("\n🔍 Testing command execution:")
-        
-        // Test ffmpeg
-        print("\nTesting ffmpeg:")
-        if let ffmpegPath = commandPaths["ffmpeg"] {
-            print("    Using ffmpeg path: \(ffmpegPath)")
-            executeCommand("\"\(ffmpegPath)\" -version") { success in
-                if success {
-                    print("✅ ffmpeg command executed successfully")
-                } else {
-                    print("❌ ffmpeg command execution failed")
-                }
-            }
-        } else {
-            print("❌ ffmpeg path not found")
-        }
-        
-        // Test cwebp
-        print("\nTesting cwebp:")
-        if let cwebpPath = commandPaths["cwebp"] {
-            print("    Using cwebp path: \(cwebpPath)")
-            executeCommand("\"\(cwebpPath)\" -version") { success in
-                if success {
-                    print("✅ cwebp command executed successfully")
-                } else {
-                    print("❌ cwebp command execution failed")
-                }
-            }
-        } else {
-            print("❌ cwebp path not found")
-        }
-    }
-    
     private func processCommand(_ command: String, input: String, output: String) -> String {
         var processedCommand = command
             .replacingOccurrences(of: "$input", with: input)
