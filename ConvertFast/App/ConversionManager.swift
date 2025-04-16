@@ -30,6 +30,7 @@ class ConversionManager {
     private var settings: [String: Any] = [:]
     
     init() {
+        print("🏗️ Initializing ConversionManager...")
         loadTemplates()
         findCommandPaths()
         setupAudioPlayer()
@@ -42,17 +43,41 @@ class ConversionManager {
             name: .settingsChanged,
             object: nil
         )
+        print("✅ ConversionManager initialization complete")
     }
     
     private func loadSettings() {
-        settings = UserDefaults.standard.dictionary(forKey: "ConversionSettings") ?? [
-            "soundEnabled": true,
-            "mp4Quality": 23,
-            "mp4Preset": "fast"
-        ]
+        print("🔧 Loading settings...")
+        
+        // First try to load from UserDefaults
+        if let savedSettings = UserDefaults.standard.dictionary(forKey: "ConversionSettings") {
+            print("  📦 Found saved settings in UserDefaults:")
+            savedSettings.forEach { key, value in
+                print("    - \(key): \(value) (type: \(type(of: value)))")
+            }
+            settings = savedSettings
+        } else {
+            print("  ⚠️ No saved settings found, using defaults")
+            // Set default settings
+            settings = [
+                "soundEnabled": true,
+                "mp4Quality": 23,
+                "mp4Preset": "fast"
+            ]
+            // Save defaults to UserDefaults
+            UserDefaults.standard.set(settings, forKey: "ConversionSettings")
+            UserDefaults.standard.synchronize()  // Force immediate save
+        }
+        
+        // Debug print current settings
+        print("  ⚙️ Current settings after loading:")
+        settings.forEach { key, value in
+            print("    - \(key): \(value) (type: \(type(of: value)))")
+        }
     }
     
     @objc private func settingsChanged() {
+        print("🔄 Settings changed notification received")
         loadSettings()
     }
     
@@ -229,19 +254,24 @@ class ConversionManager {
         process.standardOutput = pipe
         process.standardError = pipe
         
+        var outputData = Data()
+        
         do {
             try process.run()
             
             // Read output asynchronously
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                if let output = String(data: data, encoding: .utf8), !output.isEmpty {
-//                    print("    📋 Command output:")
-//                    output.components(separatedBy: .newlines).forEach { line in
-//                        if !line.isEmpty {
-//                            print("      \(line)")
-//                        }
-//                    }
+                if data.count > 0 {
+                    outputData.append(data)
+                    if let output = String(data: data, encoding: .utf8), !output.isEmpty {
+                        print("    📋 Command output:")
+                        output.components(separatedBy: .newlines).forEach { line in
+                            if !line.isEmpty {
+                                print("      \(line)")
+                            }
+                        }
+                    }
                 }
                 
                 if data.count == 0 {
@@ -252,6 +282,17 @@ class ConversionManager {
             // Wait for completion in background
             conversionQueue.async {
                 process.waitUntilExit()
+                
+                // Print final error output if any
+                if let finalOutput = String(data: outputData, encoding: .utf8), !finalOutput.isEmpty {
+                    print("    ❌ Final error output:")
+                    finalOutput.components(separatedBy: .newlines).forEach { line in
+                        if !line.isEmpty {
+                            print("      \(line)")
+                        }
+                    }
+                }
+                
                 DispatchQueue.main.async {
                     completion(process.terminationStatus == 0)
                 }
@@ -263,18 +304,40 @@ class ConversionManager {
     }
     
     private func processCommand(_ command: String, input: String, output: String) -> String {
+        print("  🔧 Processing command with settings:")
+        settings.forEach { key, value in
+            print("    - \(key): \(value) (type: \(type(of: value)))")
+        }
+        
         var processedCommand = command
             .replacingOccurrences(of: "$input", with: input)
             .replacingOccurrences(of: "$output", with: output)
         
-        // Replace MP4-specific variables
-        if let quality = settings["mp4Quality"] as? Int {
-            processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(quality))
+        // Replace MP4-specific variables with proper type conversion and defaults
+        let quality: Int
+        if let qualityDouble = settings["mp4Quality"] as? Double {
+            print("    📊 Converting quality from Double: \(qualityDouble)")
+            quality = Int(qualityDouble)
+        } else if let qualityInt = settings["mp4Quality"] as? Int {
+            print("    📊 Using quality as Int: \(qualityInt)")
+            quality = qualityInt
+        } else {
+            print("    ⚠️ Using default quality: 23")
+            quality = 23  // Default quality
         }
-        if let preset = settings["mp4Preset"] as? String {
-            processedCommand = processedCommand.replacingOccurrences(of: "$preset", with: preset)
-        }
+        processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(quality))
         
+        let preset: String
+        if let presetValue = settings["mp4Preset"] as? String {
+            print("    📊 Using preset: \(presetValue)")
+            preset = presetValue
+        } else {
+            print("    ⚠️ Using default preset: fast")
+            preset = "fast"  // Default preset
+        }
+        processedCommand = processedCommand.replacingOccurrences(of: "$preset", with: preset)
+        
+        print("    🛠️ Processed command: \(processedCommand)")
         return processedCommand
     }
     
@@ -331,9 +394,17 @@ class ConversionManager {
                 return
             }
             
-            var command = template.command
-                .replacingOccurrences(of: "$input", with: "\"\(url.path)\"")
-                .replacingOccurrences(of: "$output", with: "\"\(outputURL.path)\"")
+            // Debug print settings
+            print("    ⚙️ Current settings:")
+            print("      - mp4Quality: \(self.settings["mp4Quality"] ?? "not set")")
+            print("      - mp4Preset: \(self.settings["mp4Preset"] ?? "not set")")
+            
+            // Process the command using the dedicated method
+            var command = self.processCommand(
+                template.command,
+                input: "\"\(url.path)\"",
+                output: "\"\(outputURL.path)\""
+            )
             
             // Replace command names with full paths
             for (cmd, path) in self.commandPaths {
