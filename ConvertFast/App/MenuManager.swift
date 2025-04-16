@@ -30,7 +30,7 @@ class MenuManager {
         selectFolderItem.target = self
         menu.addItem(selectFolderItem)
         
-        let forceConvertItem = NSMenuItem(title: "Force Convert Now", action: #selector(forceConvert), keyEquivalent: "r")
+        let forceConvertItem = NSMenuItem(title: "Convert Now", action: #selector(forceConvert), keyEquivalent: "r")
         forceConvertItem.target = self
         menu.addItem(forceConvertItem)
         
@@ -57,7 +57,7 @@ class MenuManager {
         progressView.addSubview(progressIndicator)
         self.progressIndicator = progressIndicator
         
-        let progressItem = NSMenuItem(title: getRandomIdleMessage(), action: nil, keyEquivalent: "")
+        let progressItem = NSMenuItem(title: MessageUtils.shared.getRandomIdleMessage(), action: nil, keyEquivalent: "")
         progressItem.isEnabled = false
         menu.addItem(progressItem)
         self.progressItem = progressItem
@@ -147,16 +147,6 @@ class MenuManager {
         }
     }
     
-    private func getRandomIdleMessage() -> String {
-        let messages = [
-            "Ready to convert...",
-            "Waiting for files...",
-            "Idle...",
-            "Drop files here..."
-        ]
-        return messages.randomElement() ?? "Ready"
-    }
-    
     private func getCommandVersion(_ command: String) -> String {
         let process = Process()
         process.launchPath = "/usr/bin/which"
@@ -196,20 +186,4 @@ class MenuManager {
         return "Not found"
     }
     
-    private func checkIfCommandExists(_ command: String) -> Bool {
-        let process = Process()
-        process.launchPath = "/usr/bin/which"
-        process.arguments = [command]
-        
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        
-        do {
-            try process.run()
-            process.waitUntilExit()
-            return process.terminationStatus == 0
-        } catch {
-            return false
-        }
-    }
 } 

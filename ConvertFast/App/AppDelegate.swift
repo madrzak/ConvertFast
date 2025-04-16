@@ -12,17 +12,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
-    private func getRandomIdleMessage() -> String {
-        let idleMessages = [
-            "Watching folder for signs of life...",
-            "Ready to convert your media...",
-            "Idle mode: coffee break",
-            "Monitoring for new files...",
-            "Standing by for conversion duty..."
-        ]
-        return idleMessages.randomElement() ?? "Watching folder for signs of life..."
-    }
-    
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Hide dock icon - set this as early as possible
         NSApp.setActivationPolicy(.accessory)

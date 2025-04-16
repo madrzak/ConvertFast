@@ -236,12 +236,12 @@ class ConversionManager {
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 if let output = String(data: data, encoding: .utf8), !output.isEmpty {
-                    print("    📋 Command output:")
-                    output.components(separatedBy: .newlines).forEach { line in
-                        if !line.isEmpty {
-                            print("      \(line)")
-                        }
-                    }
+//                    print("    📋 Command output:")
+//                    output.components(separatedBy: .newlines).forEach { line in
+//                        if !line.isEmpty {
+//                            print("      \(line)")
+//                        }
+//                    }
                 }
                 
                 if data.count == 0 {
