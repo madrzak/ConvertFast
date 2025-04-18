@@ -75,6 +75,12 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.menu)
+                    
+                    Divider()
+                        .padding(.vertical, 8)
+                    
+                    Toggle("Enable transcription", isOn: transcriptionEnabledBinding)
+                        .padding(.vertical, 4)
                 }
                 .padding(.vertical, 4)
             }
@@ -145,6 +151,16 @@ struct SettingsView: View {
             get: { currentSettings.mp4Preset },
             set: { newValue in
                 currentSettings.mp4Preset = newValue
+                saveSettings()
+            }
+        )
+    }
+    
+    private var transcriptionEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { currentSettings.transcriptionEnabled },
+            set: { newValue in
+                currentSettings.transcriptionEnabled = newValue
                 saveSettings()
             }
         )

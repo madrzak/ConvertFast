@@ -27,6 +27,7 @@ class ConversionManager {
     private var conversionProgress = ConversionProgress(totalFiles: 0, completedFiles: 0, currentFileName: "", isConverting: false)
     private let conversionQueue = DispatchQueue(label: "com.convertfast.conversion", qos: .userInitiated)
     private var audioPlayer: AVAudioPlayer?
+    private var actualConversionsInBatch = 0  // Track actual conversions
     
     init() {
         print("🏗️ Initializing ConversionManager...")
@@ -51,7 +52,6 @@ class ConversionManager {
     }
     
     private func playCompletionSound() {
-        print("playCompletionSound")
         if let data = UserDefaultsManager.shared.getEncodedConversionSettings(),
            let settings = try? JSONDecoder().decode(ConversionSettings.self, from: data) {
             if settings.soundEnabled {
@@ -92,9 +92,9 @@ class ConversionManager {
                 isConverting: newIsConverting
             )
             
-            // Play sound only when all files are completed AND there were files to convert
-            // AND we were previously converting (to avoid playing sound when just updating progress)
-            if completedFiles == newProgress.totalFiles && newProgress.totalFiles > 0 && wasConverting {
+            // Play sound only when all files are completed AND there were actual conversions
+            // AND we were previously converting
+            if completedFiles == newProgress.totalFiles && actualConversionsInBatch > 0 && wasConverting {
                 print("All files completed, playing sound")
                 playCompletionSound()
             }
@@ -258,6 +258,9 @@ class ConversionManager {
                 }
                 
                 DispatchQueue.main.async {
+                    if process.terminationStatus == 0 {
+                        self.actualConversionsInBatch += 1  // Increment only on successful conversion
+                    }
                     completion(process.terminationStatus == 0)
                 }
             }
@@ -420,6 +423,9 @@ class ConversionManager {
     
     // Add a method to start a batch conversion
     func startBatchConversion(files: [URL], isForceConversion: Bool = false) {
+        // Reset the conversion counter at the start of each batch
+        actualConversionsInBatch = 0
+        
         // Don't show progress if there are no files
         if files.isEmpty {
             DispatchQueue.main.async {

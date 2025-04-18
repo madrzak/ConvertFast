@@ -87,4 +87,5 @@ struct ConversionSettings: Codable {
     var mp4Quality: Int = 23
     var mp4Preset: String = "fast"
     var webpQuality: Int = 85
+    var transcriptionEnabled: Bool = false
 }
