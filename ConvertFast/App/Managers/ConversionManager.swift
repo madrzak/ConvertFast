@@ -62,7 +62,8 @@ class ConversionManager {
             settings = [
                 "soundEnabled": true,
                 "mp4Quality": 23,
-                "mp4Preset": "fast"
+                "mp4Preset": "fast",
+                "webpQuality": 85  // Adding default WebP quality
             ]
             // Save defaults to UserDefaults
             UserDefaultsManager.shared.saveConversionSettings(settings)
@@ -313,13 +314,13 @@ class ConversionManager {
             .replacingOccurrences(of: "$output", with: output)
         
         // Handle quality setting
-        let quality: Int
         if command.contains("cwebp") {
-            quality = settings["webpQuality"] as? Int ?? 85  // Default WebP quality
+            let quality = settings["webpQuality"] as? Int ?? 85  // Default WebP quality
+            processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(quality))
         } else {
-            quality = settings["mp4Quality"] as? Int ?? 23  // Default MP4 quality
+            let quality = settings["mp4Quality"] as? Int ?? 23  // Default MP4 quality
+            processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(quality))
         }
-        processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(quality))
         
         // Handle preset
         let preset = settings["mp4Preset"] as? String ?? "fast"  // Default preset

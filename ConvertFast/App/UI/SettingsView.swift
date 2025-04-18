@@ -45,11 +45,19 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         
-                        Slider(value: mp4QualityBinding, in: 0...51, step: 1)
-                            .onChange(of: currentSettings.mp4Quality) { _ in
+                        Slider(
+                            value: Binding(
+                                get: { Double(currentSettings.mp4Quality) },
+                                set: { currentSettings.mp4Quality = Int(round($0)) }
+                            ),
+                            in: 0...51,
+                            step: 1
+                        ) { isEditing in
+                            if !isEditing {
                                 print("MP4 quality changed to: \(currentSettings.mp4Quality)")
                                 saveSettings()
                             }
+                        }
                         
                         // Force description to update with current value
                         Text("\(mp4QualityDescription)")
@@ -67,9 +75,6 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    .onChange(of: currentSettings.mp4Preset) { _ in
-                        saveSettings()
-                    }
                 }
                 .padding(.vertical, 4)
             }
@@ -84,14 +89,22 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         
-                        Slider(value: webpQualityBinding, in: 0...100, step: 1)
-                            .onChange(of: currentSettings.webpQuality) { _ in
+                        Slider(
+                            value: Binding(
+                                get: { Double(currentSettings.webpQuality) },
+                                set: { currentSettings.webpQuality = Int(round($0)) }
+                            ),
+                            in: 0...100,
+                            step: 1
+                        ) { isEditing in
+                            if !isEditing {
                                 print("WebP quality changed to: \(currentSettings.webpQuality)")
                                 saveSettings()
                             }
+                        }
                         
                         // Force description to update with current value
-                        Text("\(webpQualityDescription) 12")
+                        Text("\(webpQualityDescription)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.top, 4)
@@ -131,31 +144,11 @@ struct SettingsView: View {
         )
     }
     
-    private var mp4QualityBinding: Binding<Double> {
-        Binding(
-            get: { Double(currentSettings.mp4Quality) },
-            set: { newValue in
-                currentSettings.mp4Quality = Int(round(newValue))
-                saveSettings()
-            }
-        )
-    }
-    
     private var mp4PresetBinding: Binding<String> {
         Binding(
             get: { currentSettings.mp4Preset },
             set: { newValue in
                 currentSettings.mp4Preset = newValue
-                saveSettings()
-            }
-        )
-    }
-    
-    private var webpQualityBinding: Binding<Double> {
-        Binding(
-            get: { Double(currentSettings.webpQuality) },
-            set: { newValue in
-                currentSettings.webpQuality = Int(round(newValue))
                 saveSettings()
             }
         )
