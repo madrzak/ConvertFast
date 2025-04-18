@@ -130,13 +130,6 @@ struct SettingsView: View {
     }
 }
 
-struct ConversionSettings: Codable {
-    var soundEnabled: Bool = true
-    var mp4Quality: Int = 23
-    var mp4Preset: String = "fast"
-    var jpegQuality: Int = 85
-}
-
 #Preview {
     SettingsView()
 } 

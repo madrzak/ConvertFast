@@ -81,3 +81,10 @@ final class UserDefaultsManager {
         set { defaults.set(newValue, forKey: Keys.cwebpExists) }
     }
 } 
+
+struct ConversionSettings: Codable {
+    var soundEnabled: Bool = true
+    var mp4Quality: Int = 23
+    var mp4Preset: String = "fast"
+    var jpegQuality: Int = 85
+}
