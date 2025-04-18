@@ -194,13 +194,13 @@ class ConversionManager {
             ConversionTemplate(
                 inputExtension: "png",
                 outputExtension: "webp",
-                command: "cwebp -q 80 $input -o $output",
+                command: "cwebp -q $quality $input -o $output",
                 deleteOriginal: false
             ),
             ConversionTemplate(
                 inputExtension: "jpg",
                 outputExtension: "webp",
-                command: "cwebp -q 80 $input -o $output",
+                command: "cwebp -q $quality $input -o $output",
                 deleteOriginal: false
             )
         ]
@@ -312,28 +312,17 @@ class ConversionManager {
             .replacingOccurrences(of: "$input", with: input)
             .replacingOccurrences(of: "$output", with: output)
         
-        // Replace MP4-specific variables with proper type conversion and defaults
+        // Handle quality setting
         let quality: Int
-        if let qualityDouble = settings["mp4Quality"] as? Double {
-            print("    📊 Converting quality from Double: \(qualityDouble)")
-            quality = Int(qualityDouble)
-        } else if let qualityInt = settings["mp4Quality"] as? Int {
-            print("    📊 Using quality as Int: \(qualityInt)")
-            quality = qualityInt
+        if command.contains("cwebp") {
+            quality = settings["webpQuality"] as? Int ?? 85  // Default WebP quality
         } else {
-            print("    ⚠️ Using default quality: 23")
-            quality = 23  // Default quality
+            quality = settings["mp4Quality"] as? Int ?? 23  // Default MP4 quality
         }
         processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(quality))
         
-        let preset: String
-        if let presetValue = settings["mp4Preset"] as? String {
-            print("    📊 Using preset: \(presetValue)")
-            preset = presetValue
-        } else {
-            print("    ⚠️ Using default preset: fast")
-            preset = "fast"  // Default preset
-        }
+        // Handle preset
+        let preset = settings["mp4Preset"] as? String ?? "fast"  // Default preset
         processedCommand = processedCommand.replacingOccurrences(of: "$preset", with: preset)
         
         print("    🛠️ Processed command: \(processedCommand)")

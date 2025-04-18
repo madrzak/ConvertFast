@@ -60,14 +60,14 @@ struct SettingsView: View {
             Section(header: Text("Image Conversion Settings").font(.headline)) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("JPEG Quality")
+                        Text("WebP Quality")
                         Spacer()
-                        Text("\(currentSettings.jpegQuality)")
+                        Text("\(currentSettings.webpQuality)")
                             .foregroundColor(.secondary)
                     }
                     
-                    Slider(value: jpegQualityBinding, in: 0...100, step: 1)
-                        .onChange(of: currentSettings.jpegQuality) { _ in
+                    Slider(value: webpQualityBinding, in: 0...100, step: 1)
+                        .onChange(of: currentSettings.webpQuality) { _ in
                             saveSettings()
                         }
                 }
@@ -99,7 +99,8 @@ struct SettingsView: View {
         Binding(
             get: { Double(currentSettings.mp4Quality) },
             set: { newValue in
-                currentSettings.mp4Quality = Int(newValue)
+                currentSettings.mp4Quality = Int(round(newValue))
+                saveSettings()
             }
         )
     }
@@ -109,15 +110,17 @@ struct SettingsView: View {
             get: { currentSettings.mp4Preset },
             set: { newValue in
                 currentSettings.mp4Preset = newValue
+                saveSettings()
             }
         )
     }
     
-    private var jpegQualityBinding: Binding<Double> {
+    private var webpQualityBinding: Binding<Double> {
         Binding(
-            get: { Double(currentSettings.jpegQuality) },
+            get: { Double(currentSettings.webpQuality) },
             set: { newValue in
-                currentSettings.jpegQuality = Int(newValue)
+                currentSettings.webpQuality = Int(round(newValue))
+                saveSettings()
             }
         )
     }

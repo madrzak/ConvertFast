@@ -9,13 +9,13 @@
         {
             "inputExtension": "mp4",
             "outputExtension": "mp4",
-            "command": "ffmpeg -i $input -vcodec libx264 -crf 23 -preset fast -movflags +faststart $output",
+            "command": "ffmpeg -i $input -vcodec libx264 -crf $quality -preset $preset -movflags +faststart $output",
             "deleteOriginal": true
         },
         {
             "inputExtension": "mov",
             "outputExtension": "mp4",
-            "command": "ffmpeg -i $input -vcodec libx264 -crf 23 -preset fast -movflags +faststart $output",
+            "command": "ffmpeg -i $input -vcodec libx264 -crf $quality -preset $preset -movflags +faststart $output",
             "deleteOriginal": true
         },
         {
@@ -27,13 +27,13 @@
         {
             "inputExtension": "png",
             "outputExtension": "webp",
-            "command": "cwebp -q 80 $input -o $output",
+            "command": "cwebp -q $quality $input -o $output",
             "deleteOriginal": false
         },
         {
             "inputExtension": "jpg",
             "outputExtension": "webp",
-            "command": "cwebp -q 80 $input -o $output",
+            "command": "cwebp -q $quality $input -o $output",
             "deleteOriginal": false
         }
     ]
