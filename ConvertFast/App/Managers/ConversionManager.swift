@@ -37,10 +37,7 @@ class ConversionManager {
     }
     
     private func setupAudioPlayer() {
-        print("🔊 Setting up audio player...")
-        
         if let soundURL = Bundle.main.url(forResource: "ding", withExtension: "mp3") {
-            print("✅ Found sound file at alternative location: \(soundURL.path)")
             do {
                 audioPlayer = try AVAudioPlayer(contentsOf: soundURL)
                 audioPlayer?.prepareToPlay()
@@ -54,6 +51,7 @@ class ConversionManager {
     }
     
     private func playCompletionSound() {
+        print("playCompletionSound")
         if let data = UserDefaultsManager.shared.getEncodedConversionSettings(),
            let settings = try? JSONDecoder().decode(ConversionSettings.self, from: data) {
             if settings.soundEnabled {
@@ -84,15 +82,20 @@ class ConversionManager {
         }
         
         if let completedFiles = completedFiles {
+            let wasConverting = newProgress.isConverting
+            let newIsConverting = completedFiles < newProgress.totalFiles
+            
             newProgress = ConversionProgress(
                 totalFiles: newProgress.totalFiles,
                 completedFiles: completedFiles,
                 currentFileName: newProgress.currentFileName,
-                isConverting: newProgress.isConverting
+                isConverting: newIsConverting
             )
             
             // Play sound only when all files are completed AND there were files to convert
-            if completedFiles == newProgress.totalFiles && newProgress.totalFiles > 0 && newProgress.isConverting == false {
+            // AND we were previously converting (to avoid playing sound when just updating progress)
+            if completedFiles == newProgress.totalFiles && newProgress.totalFiles > 0 && wasConverting {
+                print("All files completed, playing sound")
                 playCompletionSound()
             }
         }
