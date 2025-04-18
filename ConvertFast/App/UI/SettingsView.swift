@@ -115,7 +115,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 400, height: 400)
+        .frame(width: 400, height: 480)
     }
     
     private var mp4QualityDescription: String {

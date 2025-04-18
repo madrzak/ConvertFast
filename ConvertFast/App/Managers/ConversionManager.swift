@@ -298,7 +298,7 @@ class ConversionManager {
         return processedCommand
     }
     
-    func processFile(at url: URL) {
+    func processFile(at url: URL, isForceConversion: Bool = false) {
         conversionQueue.async { [weak self] in
             guard let self = self else { return }
             
@@ -310,8 +310,8 @@ class ConversionManager {
                 self.updateProgress(currentFileName: url.lastPathComponent, isConverting: true)
             }
             
-            // Skip if the file is already optimized
-            if fileName.hasSuffix("_optimized") {
+            // Skip if the file is already optimized, unless it's a force conversion
+            if fileName.hasSuffix("_optimized") && !isForceConversion {
                 print("  ⏭️ Skipping already optimized file: \(url.lastPathComponent)")
                 DispatchQueue.main.async {
                     self.updateProgress(completedFiles: self.conversionProgress.completedFiles + 1, isConverting: false)
@@ -329,21 +329,38 @@ class ConversionManager {
                 return
             }
             
-            // Create output URL with "_optimized" suffix for MP4 files
+            // Create output URL with appropriate suffix
             let outputURL: URL
             if fileExtension == "mp4" && template.outputExtension == "mp4" {
-                let fileName = url.deletingPathExtension().lastPathComponent
+                let baseFileName = fileName.replacingOccurrences(of: "_optimized", with: "")
+                                       .replacingOccurrences(of: "_force", with: "")
+                
+                // If it's a force conversion of an already optimized file, use _force suffix
+                let suffix = (fileName.hasSuffix("_optimized") && isForceConversion) ? "_optimized_force" : "_optimized"
                 outputURL = url.deletingLastPathComponent()
-                    .appendingPathComponent(fileName + "_optimized")
+                    .appendingPathComponent(baseFileName + suffix)
                     .appendingPathExtension(template.outputExtension)
             } else {
-                outputURL = url.deletingPathExtension().appendingPathExtension(template.outputExtension)
+                // For non-MP4 files or when converting to a different format
+                var newURL = url.deletingPathExtension().appendingPathExtension(template.outputExtension)
+                
+                // If file exists and it's a force conversion, find a unique name
+                if isForceConversion && FileManager.default.fileExists(atPath: newURL.path) {
+                    var counter = 1
+                    repeat {
+                        newURL = url.deletingLastPathComponent()
+                            .appendingPathComponent("\(fileName)_\(counter)")
+                            .appendingPathExtension(template.outputExtension)
+                        counter += 1
+                    } while FileManager.default.fileExists(atPath: newURL.path)
+                }
+                outputURL = newURL
             }
             
             print("    📝 Will convert to: \(outputURL.lastPathComponent)")
             
-            // Skip if output file already exists
-            guard !FileManager.default.fileExists(atPath: outputURL.path) else {
+            // Skip if output file already exists and it's not a force conversion
+            if !isForceConversion && FileManager.default.fileExists(atPath: outputURL.path) {
                 print("    ⚠️ Output file already exists, skipping: \(outputURL.lastPathComponent)")
                 DispatchQueue.main.async {
                     self.updateProgress(completedFiles: self.conversionProgress.completedFiles + 1, isConverting: false)
@@ -399,7 +416,7 @@ class ConversionManager {
     }
     
     // Add a method to start a batch conversion
-    func startBatchConversion(files: [URL]) {
+    func startBatchConversion(files: [URL], isForceConversion: Bool = false) {
         // Don't show progress if there are no files
         if files.isEmpty {
             DispatchQueue.main.async {
@@ -414,7 +431,7 @@ class ConversionManager {
         
         // Process each file in the batch
         for (index, url) in files.enumerated() {
-            processFile(at: url)
+            processFile(at: url, isForceConversion: isForceConversion)
         }
     }
 } 

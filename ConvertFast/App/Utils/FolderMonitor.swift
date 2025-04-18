@@ -176,7 +176,7 @@ class FolderMonitor {
             }
             
             print("✅ Force conversion complete. Processing \(filesToConvert.count) files.")
-            conversionManager.startBatchConversion(files: filesToConvert)
+            conversionManager.startBatchConversion(files: filesToConvert, isForceConversion: true)
         } catch {
             print("❌ Error listing directory contents: \(error.localizedDescription)")
         }
