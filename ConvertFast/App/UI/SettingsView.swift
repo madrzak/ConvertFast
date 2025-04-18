@@ -6,7 +6,7 @@ struct SettingsView: View {
     
     init() {
         let decoder = JSONDecoder()
-        _currentSettings = State(initialValue: (try? decoder.decode(ConversionSettings.self, from: UserDefaults.standard.data(forKey: "ConversionSettings") ?? Data())) ?? ConversionSettings())
+        _currentSettings = State(initialValue: (try? decoder.decode(ConversionSettings.self, from: UserDefaultsManager.shared.getEncodedConversionSettings() ?? Data())) ?? ConversionSettings())
     }
     
     private let qualityPresets: [(value: Int, description: String)] = [
@@ -124,7 +124,7 @@ struct SettingsView: View {
     
     private func saveSettings() {
         if let encoded = try? JSONEncoder().encode(currentSettings) {
-            UserDefaults.standard.set(encoded, forKey: "ConversionSettings")
+            UserDefaultsManager.shared.saveEncodedConversionSettings(encoded)
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }

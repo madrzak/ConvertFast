@@ -11,7 +11,7 @@ class PermissionManager {
     
     private init() {
         // Try to restore existing bookmark on launch
-        if let bookmarkData = UserDefaults.standard.data(forKey: "FolderBookmark") {
+        if let bookmarkData = UserDefaultsManager.shared.getFolderBookmark() {
             do {
                 var isStale = false
                 let url = try URL(
@@ -40,7 +40,7 @@ class PermissionManager {
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             )
-            UserDefaults.standard.set(bookmarkData, forKey: "FolderBookmark")
+            UserDefaultsManager.shared.saveFolderBookmark(bookmarkData)
             print("✅ Folder access granted and bookmark saved")
             
             // Store the current URL and start accessing it
@@ -68,7 +68,7 @@ class PermissionManager {
         }
         
         // Then try to resolve existing bookmark
-        if let bookmarkData = UserDefaults.standard.data(forKey: "FolderBookmark") {
+        if let bookmarkData = UserDefaultsManager.shared.getFolderBookmark() {
             do {
                 var isStale = false
                 let bookmarkedURL = try URL(

@@ -13,7 +13,7 @@ class DependencyManager {
         for dep in dependencies {
             print("Checking for dependency: \(dep)")
             let exists = checkIfCommandExists(dep)
-            UserDefaults.standard.set(exists, forKey: "\(dep)Exists")
+            UserDefaultsManager.shared.setDependencyExists(exists, for: dep)
             if !exists {
                 print("❌ \(dep) not found")
                 missingDeps.append(dep)

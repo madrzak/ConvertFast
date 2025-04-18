@@ -73,19 +73,19 @@ class MenuManager {
         
         // Add dependency versions
         let ffmpegVersion = DependencyManager.shared.getCommandVersion("ffmpeg")
-        let ffmpegStatus = UserDefaults.standard.bool(forKey: "ffmpegExists") ? "(ok)" : "❌"
+        let ffmpegStatus = UserDefaultsManager.shared.ffmpegExists ? "(ok)" : "❌"
         let ffmpegItem = NSMenuItem(title: "FFmpeg \(ffmpegStatus): \(ffmpegVersion)", action: nil, keyEquivalent: "")
         ffmpegItem.isEnabled = false
         menu.addItem(ffmpegItem)
         
         let cwebpVersion = DependencyManager.shared.getCommandVersion("cwebp")
-        let cwebpStatus = UserDefaults.standard.bool(forKey: "cwebpExists") ? "(ok)" : "❌"
+        let cwebpStatus = UserDefaultsManager.shared.cwebpExists ? "(ok)" : "❌"
         let cwebpItem = NSMenuItem(title: "cwebp \(cwebpStatus): \(cwebpVersion)", action: nil, keyEquivalent: "")
         cwebpItem.isEnabled = false
         menu.addItem(cwebpItem)
         
         // Add watched folder info
-        if let watchFolderPath = UserDefaults.standard.string(forKey: "WatchFolderPath") {
+        if let watchFolderPath = UserDefaultsManager.shared.watchFolderPath {
             let folderItem = NSMenuItem(title: "Watching: \(watchFolderPath)", action: nil, keyEquivalent: "")
             folderItem.isEnabled = false
             menu.addItem(folderItem)

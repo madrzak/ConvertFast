@@ -7,7 +7,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var folderMonitor: FolderMonitor?
     private var isEnabled: Bool = false {
         didSet {
-            UserDefaults.standard.set(isEnabled, forKey: "ConvertFastEnabled")
+            UserDefaultsManager.shared.isEnabled = isEnabled
             menuManager.updateEnabledState(isEnabled)
         }
     }
@@ -43,10 +43,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DependencyManager.shared.checkDependencies()
         
         // Restore previous state
-        isEnabled = UserDefaults.standard.bool(forKey: "ConvertFastEnabled")
+        isEnabled = UserDefaultsManager.shared.isEnabled
         
         // Restore previous watch folder if exists, otherwise use Desktop
-        if let watchFolderPath = UserDefaults.standard.string(forKey: "WatchFolderPath") {
+        if let watchFolderPath = UserDefaultsManager.shared.watchFolderPath {
             let folderURL = URL(fileURLWithPath: watchFolderPath)
             setupFolderMonitoring(for: folderURL)
         }
@@ -87,7 +87,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc func selectWatchFolder() {
         // Get the default URL (Desktop) if no folder is currently selected
-        let defaultURL = UserDefaults.standard.string(forKey: "WatchFolderPath").map { URL(fileURLWithPath: $0) } ?? FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
+        let defaultURL = UserDefaultsManager.shared.watchFolderURL ?? FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
         
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -104,7 +104,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 PermissionManager.shared.requestFolderAccess(for: url) { granted in
                     if granted {
                         self?.setupFolderMonitoring(for: url)
-                        UserDefaults.standard.set(url.path, forKey: "WatchFolderPath")
+                        UserDefaultsManager.shared.watchFolderURL = url
                     }
                 }
             }
@@ -125,7 +125,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func setupFolderMonitoring(for url: URL) {
         // For previously saved paths, only check if we can actually access the folder
-        if UserDefaults.standard.string(forKey: "WatchFolderPath") == url.path {
+        if UserDefaultsManager.shared.watchFolderPath == url.path {
             do {
                 // Try to read the directory contents as a basic access test
                 _ = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
@@ -165,7 +165,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func handleFolderAccessGranted(_ notification: Notification) {
         if let url = notification.userInfo?["url"] as? URL {
-            UserDefaults.standard.set(url.path, forKey: "WatchFolderPath")
+            UserDefaultsManager.shared.watchFolderURL = url
             menuManager.updateMenu()
         }
     }

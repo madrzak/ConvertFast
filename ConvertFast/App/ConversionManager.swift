@@ -50,7 +50,7 @@ class ConversionManager {
         print("🔧 Loading settings...")
         
         // First try to load from UserDefaults
-        if let savedSettings = UserDefaults.standard.dictionary(forKey: "ConversionSettings") {
+        if let savedSettings = UserDefaultsManager.shared.getConversionSettings() {
             print("  📦 Found saved settings in UserDefaults:")
             savedSettings.forEach { key, value in
                 print("    - \(key): \(value) (type: \(type(of: value)))")
@@ -65,8 +65,7 @@ class ConversionManager {
                 "mp4Preset": "fast"
             ]
             // Save defaults to UserDefaults
-            UserDefaults.standard.set(settings, forKey: "ConversionSettings")
-            UserDefaults.standard.synchronize()  // Force immediate save
+            UserDefaultsManager.shared.saveConversionSettings(settings)
         }
         
         // Debug print current settings
