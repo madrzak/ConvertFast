@@ -27,58 +27,13 @@ class ConversionManager {
     private var conversionProgress = ConversionProgress(totalFiles: 0, completedFiles: 0, currentFileName: "", isConverting: false)
     private let conversionQueue = DispatchQueue(label: "com.convertfast.conversion", qos: .userInitiated)
     private var audioPlayer: AVAudioPlayer?
-    private var settings: [String: Any] = [:]
     
     init() {
         print("🏗️ Initializing ConversionManager...")
         loadTemplates()
         findCommandPaths()
         setupAudioPlayer()
-        loadSettings()
-        
-        // Observe settings changes
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(settingsChanged),
-            name: .settingsChanged,
-            object: nil
-        )
         print("✅ ConversionManager initialization complete")
-    }
-    
-    private func loadSettings() {
-        print("🔧 Loading settings...")
-        
-        // First try to load from UserDefaults
-        if let savedSettings = UserDefaultsManager.shared.getConversionSettings() {
-            print("  📦 Found saved settings in UserDefaults:")
-            savedSettings.forEach { key, value in
-                print("    - \(key): \(value) (type: \(type(of: value)))")
-            }
-            settings = savedSettings
-        } else {
-            print("  ⚠️ No saved settings found, using defaults")
-            // Set default settings
-            settings = [
-                "soundEnabled": true,
-                "mp4Quality": 23,
-                "mp4Preset": "fast",
-                "webpQuality": 85  // Adding default WebP quality
-            ]
-            // Save defaults to UserDefaults
-            UserDefaultsManager.shared.saveConversionSettings(settings)
-        }
-        
-        // Debug print current settings
-        print("  ⚙️ Current settings after loading:")
-        settings.forEach { key, value in
-            print("    - \(key): \(value) (type: \(type(of: value)))")
-        }
-    }
-    
-    @objc private func settingsChanged() {
-        print("🔄 Settings changed notification received")
-        loadSettings()
     }
     
     private func setupAudioPlayer() {
@@ -99,7 +54,13 @@ class ConversionManager {
     }
     
     private func playCompletionSound() {
-        if settings["soundEnabled"] as? Bool ?? true {
+        if let data = UserDefaultsManager.shared.getEncodedConversionSettings(),
+           let settings = try? JSONDecoder().decode(ConversionSettings.self, from: data) {
+            if settings.soundEnabled {
+                audioPlayer?.play()
+            }
+        } else {
+            // Use default value if no settings found
             audioPlayer?.play()
         }
     }
@@ -304,10 +265,19 @@ class ConversionManager {
     }
     
     private func processCommand(_ command: String, input: String, output: String) -> String {
-        print("  🔧 Processing command with settings:")
-        settings.forEach { key, value in
-            print("    - \(key): \(value) (type: \(type(of: value)))")
+        let settings: ConversionSettings
+        if let data = UserDefaultsManager.shared.getEncodedConversionSettings(),
+           let decoded = try? JSONDecoder().decode(ConversionSettings.self, from: data) {
+            settings = decoded
+        } else {
+            settings = ConversionSettings() // Use default values
         }
+        
+        print("  🔧 Processing command with settings:")
+        print("    - soundEnabled: \(settings.soundEnabled)")
+        print("    - mp4Quality: \(settings.mp4Quality)")
+        print("    - mp4Preset: \(settings.mp4Preset)")
+        print("    - webpQuality: \(settings.webpQuality)")
         
         var processedCommand = command
             .replacingOccurrences(of: "$input", with: input)
@@ -315,16 +285,14 @@ class ConversionManager {
         
         // Handle quality setting
         if command.contains("cwebp") {
-            let quality = settings["webpQuality"] as? Int ?? 85  // Default WebP quality
-            processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(quality))
+            processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(settings.webpQuality))
+            print("    📊 Using WebP quality: \(settings.webpQuality)")
         } else {
-            let quality = settings["mp4Quality"] as? Int ?? 23  // Default MP4 quality
-            processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(quality))
+            processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(settings.mp4Quality))
         }
         
         // Handle preset
-        let preset = settings["mp4Preset"] as? String ?? "fast"  // Default preset
-        processedCommand = processedCommand.replacingOccurrences(of: "$preset", with: preset)
+        processedCommand = processedCommand.replacingOccurrences(of: "$preset", with: settings.mp4Preset)
         
         print("    🛠️ Processed command: \(processedCommand)")
         return processedCommand
@@ -385,8 +353,9 @@ class ConversionManager {
             
             // Debug print settings
             print("    ⚙️ Current settings:")
-            print("      - mp4Quality: \(self.settings["mp4Quality"] ?? "not set")")
-            print("      - mp4Preset: \(self.settings["mp4Preset"] ?? "not set")")
+            let settings = UserDefaultsManager.shared.getConversionSettings() ?? [:]
+            print("      - mp4Quality: \(settings["mp4Quality"] ?? "not set")")
+            print("      - mp4Preset: \(settings["mp4Preset"] ?? "not set")")
             
             // Process the command using the dedicated method
             var command = self.processCommand(
