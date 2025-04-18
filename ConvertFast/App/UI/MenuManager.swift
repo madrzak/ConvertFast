@@ -113,16 +113,13 @@ class MenuManager {
     }
     
     @objc func showSettings() {
-        print("Showing settings window")
         if settingsWindowController == nil {
-            print("Creating new settings window controller")
             settingsWindowController = SettingsWindowController()
             
             // Ensure window is loaded
             settingsWindowController?.loadWindow()
         }
         
-        print("Showing window")
         settingsWindowController?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

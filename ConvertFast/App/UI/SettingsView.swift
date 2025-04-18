@@ -119,18 +119,14 @@ struct SettingsView: View {
     }
     
     private var mp4QualityDescription: String {
-        print("Calculating MP4 quality description for value: \(currentSettings.mp4Quality)")
         let value = currentSettings.mp4Quality
         let closestPreset = mp4QualityPresets.min(by: { abs($0.value - value) < abs($1.value - value) }) ?? mp4QualityPresets[1]
-        print("Selected MP4 preset: \(closestPreset.description)")
         return closestPreset.description
     }
     
     private var webpQualityDescription: String {
-        print("Calculating WebP quality description for value: \(currentSettings.webpQuality)")
         let value = currentSettings.webpQuality
         let closestPreset = webpQualityPresets.min(by: { abs($0.value - value) < abs($1.value - value) }) ?? webpQualityPresets[2]
-        print("Selected WebP preset: \(closestPreset.description)")
         return closestPreset.description
     }
     
