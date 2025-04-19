@@ -15,6 +15,7 @@ final class UserDefaultsManager {
         static let folderBookmark = "FolderBookmark"
         static let ffmpegExists = "ffmpegExists"
         static let cwebpExists = "cwebpExists"
+        static let whisperExists = "whisperExists"
     }
     
     // MARK: - App State
@@ -79,6 +80,11 @@ final class UserDefaultsManager {
     var cwebpExists: Bool {
         get { defaults.bool(forKey: Keys.cwebpExists) }
         set { defaults.set(newValue, forKey: Keys.cwebpExists) }
+    }
+    
+    var whisperExists: Bool {
+        get { defaults.bool(forKey: Keys.whisperExists) }
+        set { defaults.set(newValue, forKey: Keys.whisperExists) }
     }
 } 
 
