@@ -165,7 +165,7 @@ class ConversionManager {
             ConversionTemplate(
                 inputExtension: "jpg",
                 outputExtension: "webp",
-                command: "cwebp -q $quality $input -o $output",
+                command: "magick $input -colorspace sRGB -quality $quality webp:$output",
                 deleteOriginal: false
             )
         ]
@@ -181,7 +181,7 @@ class ConversionManager {
     }
     
     private func findCommandPaths() {
-        let commands = ["ffmpeg", "cwebp"]
+        let commands = ["ffmpeg", "cwebp", "magick"]
         
         for command in commands {
             let homebrewPath = "/opt/homebrew/bin/\(command)"
@@ -290,7 +290,7 @@ class ConversionManager {
             .replacingOccurrences(of: "$output", with: output)
         
         // Handle quality setting
-        if command.contains("cwebp") {
+        if command.contains("cwebp") || command.contains("magick") {
             processedCommand = processedCommand.replacingOccurrences(of: "$quality", with: String(settings.webpQuality))
             print("    📊 Using WebP quality: \(settings.webpQuality)")
         } else {

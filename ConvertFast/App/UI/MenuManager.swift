@@ -84,6 +84,12 @@ class MenuManager {
         cwebpItem.isEnabled = false
         menu.addItem(cwebpItem)
         
+        let magickVersion = DependencyManager.shared.getCommandVersion("magick")
+        let magickStatus = UserDefaultsManager.shared.magickExists ? "(ok)" : "❌"
+        let magickItem = NSMenuItem(title: "ImageMagick \(magickStatus): \(magickVersion)", action: nil, keyEquivalent: "")
+        magickItem.isEnabled = false
+        menu.addItem(magickItem)
+        
         // Add watched folder info
         if let watchFolderPath = UserDefaultsManager.shared.watchFolderPath {
             let folderItem = NSMenuItem(title: "Watching: \(watchFolderPath)", action: nil, keyEquivalent: "")

@@ -16,6 +16,7 @@ final class UserDefaultsManager {
         static let ffmpegExists = "ffmpegExists"
         static let cwebpExists = "cwebpExists"
         static let whisperExists = "whisperExists"
+        static let magickExists = "magickExists"
     }
     
     // MARK: - App State
@@ -85,6 +86,11 @@ final class UserDefaultsManager {
     var whisperExists: Bool {
         get { defaults.bool(forKey: Keys.whisperExists) }
         set { defaults.set(newValue, forKey: Keys.whisperExists) }
+    }
+    
+    var magickExists: Bool {
+        get { defaults.bool(forKey: Keys.magickExists) }
+        set { defaults.set(newValue, forKey: Keys.magickExists) }
     }
 } 
 

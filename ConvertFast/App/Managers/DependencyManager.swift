@@ -7,7 +7,7 @@ class DependencyManager {
     private init() {}
     
     func checkDependencies() {
-        let dependencies = ["ffmpeg", "cwebp"]
+        let dependencies = ["ffmpeg", "cwebp", "magick"]
         var missingDeps: [String] = []
         
         for dep in dependencies {
